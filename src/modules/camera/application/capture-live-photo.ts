@@ -1,7 +1,7 @@
 import type { LivePhotoClip } from '../../sessions/domain/booth-session'
 
-const BEFORE_SHUTTER_MS = 1_500
-const AFTER_SHUTTER_MS = 1_500
+const BEFORE_SHUTTER_MS = 2_000
+const AFTER_SHUTTER_MS = 2_000
 
 const preferredMimeTypes = [
   'video/mp4;codecs=h264',

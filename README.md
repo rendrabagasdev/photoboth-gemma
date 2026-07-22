@@ -6,7 +6,7 @@ Aplikasi photobooth on-site berbasis React + TypeScript untuk digunakan sebagai 
 
 - Alur kiosk: landing → kamera → pilih frame → review → hasil.
 - Capture tiga foto otomatis dengan countdown.
-- Live Photo per slot: foto resolusi tinggi + video 3 detik (1,5 detik sebelum dan sesudah shutter).
+- Live Photo per slot: foto resolusi tinggi + video 4 detik (2 detik sebelum dan sesudah shutter).
 - Kamera dan setiap area foto menggunakan rasio landscape `4:3`.
 - Retake per foto.
 - Komposisi photo strip di browser menggunakan Canvas.
