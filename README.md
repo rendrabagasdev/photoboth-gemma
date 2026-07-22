@@ -88,8 +88,8 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 - Frame disimpan secara lokal pada iPad dan tetap tersedia ketika offline.
 - Hasil akhir berupa satu kanvas cetak 4R portrait `1200 × 1800 px` dengan tiga area foto 4:3.
 - Pada halaman review, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang.
-- Live Photo dapat diputar di halaman review dan dibagikan sebagai MP4/WebM dari halaman hasil.
-- Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG dan versi live MP4/WebM.
+- Live Photo dapat diputar di halaman review lalu dibagikan sebagai Motion Photo JPG, dengan video tersimpan di dalam satu file JPEG.
+- Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG biasa dan Motion Photo JPG.
 - QR dibuat otomatis setelah hasil selesai diproses.
 - Saat **Mulai lagi** ditekan, QR langsung dinonaktifkan dan kedua file dihapus dari object storage. Batas 24 jam tetap menjadi pengaman jika sesi tidak ditutup normal.
 

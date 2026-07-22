@@ -93,11 +93,13 @@ export async function readShareFile(
     : `shares/${manifest.id}/live.${manifest.liveExtension}`
   const result = await get(path, { access: 'private', useCache: false })
   if (!result || result.statusCode !== 200) return null
-  const extension = isPhoto ? 'jpg' : manifest.liveExtension
+  const filename = isPhoto
+    ? `TOBFEST_${manifest.id.slice(0, 8)}.JPG`
+    : `TOBFEST_${manifest.id.slice(0, 8)}_MP.JPG`
   return new Response(result.stream, {
     headers: {
       'content-type': isPhoto ? manifest.photoType : manifest.liveType,
-      'content-disposition': `attachment; filename="tobfest-${kind}-${manifest.id.slice(0, 8)}.${extension}"`,
+      'content-disposition': `attachment; filename="${filename}"`,
       'cache-control': 'private, no-store',
     },
   })

@@ -11,8 +11,7 @@ export class HttpShareService implements ShareService {
     const form = new FormData()
     form.append('sessionId', sessionId)
     form.append('photo', upload.photo, `tobfest-${sessionId.slice(0, 8)}.jpg`)
-    const extension = upload.live.type.includes('mp4') ? 'mp4' : 'webm'
-    form.append('live', upload.live, `tobfest-live-${sessionId.slice(0, 8)}.${extension}`)
+    form.append('live', upload.live, `TOBFEST_${sessionId.slice(0, 8)}_MP.JPG`)
 
     const response = await fetch(`${this.baseUrl}/api/shares`, { method: 'POST', body: form })
     if (!response.ok) throw new Error('QR gagal dibuat.')

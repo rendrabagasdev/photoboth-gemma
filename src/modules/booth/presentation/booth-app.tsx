@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
+import { composeMotionPhoto } from '../../camera/application/compose-motion-photo'
 import { PhotoTemplateEditor } from '../../camera/presentation/photo-template-editor'
 import {
   defaultPhotoTransforms,
@@ -353,7 +354,7 @@ export function BoothApp({ container }: BoothAppProps) {
     setScreen('processing')
     persistSession((current) => ({ ...current, status: 'processing' }))
     try {
-      const [finalImage, finalLive] = await Promise.all([
+      const [finalImage, finalVideo] = await Promise.all([
         composePhotoStrip(session.photos, selectedFrame, photoTransforms),
         composeLiveTemplate(
           session.photos,
@@ -362,6 +363,9 @@ export function BoothApp({ container }: BoothAppProps) {
           photoTransforms,
         ).catch(() => undefined),
       ])
+      const finalLive = finalVideo
+        ? await composeMotionPhoto(finalImage, finalVideo).catch(() => undefined)
+        : undefined
       const completed: BoothSession = {
         ...session,
         frameId: selectedFrame.id,
