@@ -18,7 +18,7 @@ import { OperatorLock } from '../../operator/presentation/operator-lock'
 import { OperatorDashboard } from '../../operator/presentation/operator-dashboard'
 import type { UnlockApp } from '../../app-lock/application/use-cases/unlock-app'
 import type { TokenServices } from '../../app-lock/application/ports/token-services'
-import type { ShareService } from '../../sharing/application/share-service'
+import type { ShareService, SharedResult } from '../../sharing/application/share-service'
 import QRCode from 'qrcode'
 
 type BoothScreen =
@@ -143,12 +143,15 @@ function ResultPage({
   const [actionError, setActionError] = useState('')
   const [qrImage, setQrImage] = useState('')
   const [sharing, setSharing] = useState(false)
+  const [destroying, setDestroying] = useState(false)
+  const [sharedResult, setSharedResult] = useState<SharedResult>()
 
   const createQr = async () => {
     if (!liveResult || sharing) return
     setSharing(true)
     try {
       const shared = await shareService.publish(sessionId, { photo: result, live: liveResult })
+      setSharedResult(shared)
       setQrImage(await QRCode.toDataURL(shared.downloadUrl, {
         width: 420,
         margin: 2,
@@ -163,6 +166,23 @@ function ResultPage({
     }
   }
 
+  const startAgain = async () => {
+    if (destroying) return
+    if (!sharedResult) {
+      onDone()
+      return
+    }
+
+    setDestroying(true)
+    try {
+      await shareService.destroy(sharedResult.id, sharedResult.destroyToken)
+      onDone()
+    } catch {
+      setActionError('Hasil belum terhapus.')
+      setDestroying(false)
+    }
+  }
+
   return (
     <main className="result-page">
       <div className="result-copy">
@@ -172,7 +192,7 @@ function ResultPage({
         </div>
         {qrImage && <img className="download-qr" src={qrImage} alt="QR unduh foto dan Live Photo" />}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        <button className="text-button" type="button" onClick={onDone}>Mulai lagi →</button>
+        <button className="text-button" type="button" onClick={() => void startAgain()} disabled={destroying}>{destroying ? '…' : 'Mulai lagi →'}</button>
       </div>
       <div className="result-visual">
         <span className="result-star one">✦</span><span className="result-star two">★</span>

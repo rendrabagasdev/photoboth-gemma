@@ -18,4 +18,12 @@ export class HttpShareService implements ShareService {
     if (!response.ok) throw new Error('QR gagal dibuat.')
     return response.json() as Promise<SharedResult>
   }
+
+  async destroy(id: string, destroyToken: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/shares/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'x-share-token': destroyToken },
+    })
+    if (!response.ok && response.status !== 404) throw new Error('Hasil gagal dihapus.')
+  }
 }

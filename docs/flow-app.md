@@ -195,7 +195,7 @@ flowchart TD
 
 **Tujuan:** menyerahkan hasil kepada pengunjung.
 
-**Konten:** preview resolusi tinggi, tombol **QR**, dan **Selesai**. Setelah QR dipindai, ponsel menampilkan dua pilihan: **Foto** dan **Live**. Tautan berlaku 24 jam.
+**Konten:** preview resolusi tinggi, tombol **QR**, dan **Selesai**. Setelah QR dipindai, ponsel menampilkan dua pilihan: **Foto** dan **Live**. Ketika **Mulai lagi** ditekan, QR dinonaktifkan dan kedua file dihapus. Batas 24 jam menjadi pengaman jika sesi tidak ditutup normal.
 
 **Aturan:**
 
