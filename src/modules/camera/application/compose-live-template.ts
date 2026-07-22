@@ -42,8 +42,6 @@ function selectMimeType(): string | undefined {
   return [
     'video/mp4;codecs=h264',
     'video/mp4',
-    'video/webm;codecs=vp8',
-    'video/webm',
   ].find((type) => MediaRecorder.isTypeSupported(type))
 }
 

@@ -6,8 +6,6 @@ const AFTER_SHUTTER_MS = 1_500
 const preferredMimeTypes = [
   'video/mp4;codecs=h264',
   'video/mp4',
-  'video/webm;codecs=vp8',
-  'video/webm',
 ]
 
 export type LivePhotoCapture = {
@@ -36,8 +34,9 @@ export async function captureLivePhoto(
   if (stream && typeof MediaRecorder !== 'undefined') {
     try {
       const mimeType = selectMimeType()
+      if (!mimeType) throw new Error('Perekaman MP4 tidak didukung.')
       recorder = new MediaRecorder(stream, {
-        ...(mimeType ? { mimeType } : {}),
+        mimeType,
         videoBitsPerSecond: 4_000_000,
       })
       stopped = new Promise((resolve, reject) => {
@@ -73,7 +72,7 @@ export async function captureLivePhoto(
     return { photo }
   }
 
-  const mimeType = recorder.mimeType || chunks.find((chunk) => chunk instanceof Blob)?.type || 'video/webm'
+  const mimeType = recorder.mimeType || chunks.find((chunk) => chunk instanceof Blob)?.type || 'video/mp4'
   const videoBlob = new Blob(chunks, { type: mimeType })
   if (videoBlob.size === 0) return { photo }
 

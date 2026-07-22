@@ -24,15 +24,15 @@ export default {
       }
 
       const { id, destroyToken } = createShareIdentity()
-      if (live.type !== 'image/jpeg') {
-        return Response.json({ error: 'invalid_motion_photo' }, { status: 400 })
+      if (!live.type.includes('mp4')) {
+        return Response.json({ error: 'invalid_live_video' }, { status: 400 })
       }
-      const liveExtension = 'jpg'
+      const liveExtension = 'mp4'
       const manifest: ShareManifest = {
         id,
         sessionId,
         photoType: photo.type || 'image/jpeg',
-        liveType: 'image/jpeg',
+        liveType: live.type || 'video/mp4',
         liveExtension,
         destroyTokenHash: hashToken(destroyToken),
         expiresAt: new Date(Date.now() + SHARE_LIFETIME_MS).toISOString(),
