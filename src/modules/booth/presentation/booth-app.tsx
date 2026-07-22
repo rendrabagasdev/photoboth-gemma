@@ -199,9 +199,7 @@ function ResultPage({
         <button className="text-button" type="button" onClick={() => void startAgain()} disabled={destroying}>{destroying ? '…' : 'Mulai lagi →'}</button>
       </div>
       <div className="result-visual">
-        <span className="result-star one">✦</span><span className="result-star two">★</span>
         <div className="final-photo-wrap">{resultUrl && <img src={resultUrl} alt="Hasil akhir photobooth" />}</div>
-        <div className="success-sticker">✓</div>
       </div>
     </main>
   )
