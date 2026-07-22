@@ -71,8 +71,8 @@ export async function composePhotoStrip(
   frame: PhotoFrame,
   transforms: PhotoTransform[] = defaultPhotoTransforms,
 ): Promise<Blob> {
-  if (photos.length !== 3) {
-    throw new Error('Tiga foto diperlukan untuk membuat hasil akhir.')
+  if (photos.length !== 4) {
+    throw new Error('Empat foto diperlukan untuk membuat hasil akhir.')
   }
 
   const canvas = document.createElement('canvas')
@@ -109,7 +109,7 @@ export async function composePhotoStrip(
   context.fillStyle = '#171711'
   context.font = '900 76px Arial, sans-serif'
   context.textAlign = 'center'
-  context.fillText('TOBFEST', TEMPLATE_WIDTH / 2, 1535)
+  context.fillText('TOBFEST', TEMPLATE_WIDTH / 2, 1615)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

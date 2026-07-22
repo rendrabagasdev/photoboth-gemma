@@ -18,9 +18,10 @@ export type PhotoTransform = {
 }
 
 export const templateSlots: TemplateSlot[] = [
-  { x: 30, y: 45, width: 540, height: 405 },
-  { x: 30, y: 480, width: 540, height: 405 },
-  { x: 30, y: 915, width: 540, height: 405 },
+  { x: 60, y: 30, width: 480, height: 360 },
+  { x: 60, y: 400, width: 480, height: 360 },
+  { x: 60, y: 770, width: 480, height: 360 },
+  { x: 60, y: 1140, width: 480, height: 360 },
 ]
 
 export const defaultPhotoTransforms: PhotoTransform[] = templateSlots.map(() => ({

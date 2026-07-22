@@ -19,6 +19,7 @@ export function FramePreview({ frame, selected = false, compact = false, photos 
       <div className="mini-photo one">{photos[0] && <img src={photos[0]} alt="" />}</div>
       <div className="mini-photo two">{photos[1] && <img src={photos[1]} alt="" />}</div>
       <div className="mini-photo three">{photos[2] && <img src={photos[2]} alt="" />}</div>
+      <div className="mini-photo four">{photos[3] && <img src={photos[3]} alt="" />}</div>
       <div className="mini-brand">TOBFEST</div>
       <span className="frame-dot" />
       {overlayUrl && <img src={overlayUrl} alt="" className="uploaded-overlay" />}

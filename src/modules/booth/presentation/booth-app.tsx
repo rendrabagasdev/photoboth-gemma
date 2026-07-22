@@ -43,7 +43,8 @@ type BoothAppProps = {
   }
 }
 
-const TOTAL_PHOTOS = 3
+const TOTAL_PHOTOS = 4
+const ALL_CAMERA_SLOTS = [0, 1, 2, 3]
 const OPERATOR_TOKEN_KEY = 'tobfest-operator-token'
 
 function LandingPage({ onStart, onOperator }: { onStart: () => void; onOperator: () => void }) {
@@ -237,7 +238,7 @@ export function BoothApp({ container }: BoothAppProps) {
   const [session, setSession] = useState<BoothSession>()
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null)
   const [paletteId, setPaletteId] = useState(framePalettes[0].id)
-  const [cameraSlots, setCameraSlots] = useState<number[]>([0, 1, 2])
+  const [cameraSlots, setCameraSlots] = useState<number[]>(ALL_CAMERA_SLOTS)
   const [photoTransforms, setPhotoTransforms] = useState<PhotoTransform[]>(
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
   )
@@ -297,7 +298,7 @@ export function BoothApp({ container }: BoothAppProps) {
       await container.sessionService.save(capturingSession)
       setSession(capturingSession)
       setPaletteId(framePalettes[0].id)
-      setCameraSlots([0, 1, 2])
+      setCameraSlots(ALL_CAMERA_SLOTS)
       setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
       setFramePickerOrigin('capture')
       setScreen('camera')
@@ -400,7 +401,7 @@ export function BoothApp({ container }: BoothAppProps) {
   const reset = () => {
     setSession(undefined)
     setPaletteId(framePalettes[0].id)
-    setCameraSlots([0, 1, 2])
+    setCameraSlots(ALL_CAMERA_SLOTS)
     setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
     setFramePickerOrigin('capture')
     setFatalError('')
@@ -464,7 +465,7 @@ export function BoothApp({ container }: BoothAppProps) {
             setScreen('review')
             return
           }
-          setCameraSlots([0, 1, 2])
+          setCameraSlots(ALL_CAMERA_SLOTS)
           setScreen('camera')
         }}
       />

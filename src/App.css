@@ -787,9 +787,10 @@
   background: linear-gradient(145deg, rgba(23, 23, 17, 0.1), rgba(23, 23, 17, 0.32));
 }
 
-.mini-photo.one { left: 5%; top: 2.5%; width: 90%; height: 22.5%; }
-.mini-photo.two { left: 5%; top: 26.67%; width: 90%; height: 22.5%; background: linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(23, 23, 17, 0.22)); }
-.mini-photo.three { left: 5%; top: 50.83%; width: 90%; height: 22.5%; background: linear-gradient(145deg, rgba(57, 116, 255, 0.22), rgba(23, 23, 17, 0.3)); }
+.mini-photo.one { left: 10%; top: 1.67%; width: 80%; height: 20%; }
+.mini-photo.two { left: 10%; top: 22.22%; width: 80%; height: 20%; background: linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(23, 23, 17, 0.22)); }
+.mini-photo.three { left: 10%; top: 42.78%; width: 80%; height: 20%; background: linear-gradient(145deg, rgba(57, 116, 255, 0.22), rgba(23, 23, 17, 0.3)); }
+.mini-photo.four { left: 10%; top: 63.33%; width: 80%; height: 20%; background: linear-gradient(145deg, rgba(255, 210, 63, 0.28), rgba(23, 23, 17, 0.3)); }
 
 .mini-photo img {
   width: 100%;
@@ -800,7 +801,7 @@
 
 .mini-brand {
   position: absolute;
-  top: 83%;
+  top: 90%;
   left: 50%;
   z-index: 3;
   transform: translateX(-50%);
@@ -808,7 +809,7 @@
   font-weight: 950;
 }
 
-.frame-artwork.compact .mini-brand { top: 83%; left: 50%; font-size: 5px; }
+.frame-artwork.compact .mini-brand { top: 90%; left: 50%; font-size: 5px; }
 .frame-dot { width: 24px; height: 24px; position: absolute; bottom: -5px; right: 4px; border-radius: 50%; background: var(--frame-accent); }
 .uploaded-overlay { width: 100%; height: 100%; position: absolute; inset: 0; z-index: 2; object-fit: fill; }
 
@@ -1232,7 +1233,7 @@
 .template-brand {
   position: absolute;
   z-index: 5;
-  top: 83%;
+  top: 90%;
   left: 50%;
   transform: translate(-50%, -50%);
   color: var(--ink);

@@ -148,7 +148,7 @@ export async function composeLiveTemplate(
     context.fillText(
       'TOBFEST',
       offsetX + (TEMPLATE_WIDTH * OUTPUT_SCALE) / 2,
-      1535 * OUTPUT_SCALE,
+      1615 * OUTPUT_SCALE,
     )
   }
 

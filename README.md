@@ -1,11 +1,11 @@
 # TOBFest Photobooth
 
-Aplikasi photobooth on-site berbasis React + TypeScript untuk digunakan sebagai kiosk di iPad. Pengunjung mengambil tiga foto, memilih frame, melakukan retake, lalu mengunduh atau mencetak hasilnya. Operator dapat menambah dan mengatur frame langsung dari perangkat.
+Aplikasi photobooth on-site berbasis React + TypeScript untuk digunakan sebagai kiosk di iPad. Pengunjung mengambil empat foto, memilih frame, melakukan retake, lalu mengunduh atau mencetak hasilnya. Operator dapat menambah dan mengatur frame langsung dari perangkat.
 
 ## Fitur
 
 - Alur kiosk: landing → kamera → pilih frame → review → hasil.
-- Capture tiga foto otomatis dengan countdown.
+- Capture empat foto otomatis dengan countdown.
 - Live Photo per slot: foto resolusi tinggi + video 3 detik (1,5 detik sebelum dan sesudah shutter).
 - Kamera dan setiap area foto menggunakan rasio landscape `4:3`.
 - Retake per foto.
@@ -95,9 +95,10 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 
 Area transparan template mengikuti koordinat berikut pada kanvas strip `600 × 1800 px`:
 
-- Foto 1: `x 30`, `y 45`, ukuran `540 × 405`.
-- Foto 2: `x 30`, `y 480`, ukuran `540 × 405`.
-- Foto 3: `x 30`, `y 915`, ukuran `540 × 405`.
+- Foto 1: `x 60`, `y 30`, ukuran `480 × 360`.
+- Foto 2: `x 60`, `y 400`, ukuran `480 × 360`.
+- Foto 3: `x 60`, `y 770`, ukuran `480 × 360`.
+- Foto 4: `x 60`, `y 1140`, ukuran `480 × 360`.
 
 Contoh siap pakai: [tobfest-half-4r-strip-example.png](public/templates/tobfest-half-4r-strip-example.png).
 
