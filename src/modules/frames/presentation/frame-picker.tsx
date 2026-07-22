@@ -1,21 +1,36 @@
 import type { PhotoFrame } from '../domain/photo-frame'
+import { framePalettes, type FramePalette } from '../domain/frame-palette'
 import { FramePreview } from './frame-preview'
 
 type FramePickerProps = {
   frames: PhotoFrame[]
+  photos: string[]
   selectedId: string | null
+  paletteId: string
   onSelect: (frame: PhotoFrame) => void
+  onPaletteSelect: (palette: FramePalette) => void
   onContinue: () => void
   onBack: () => void
 }
 
 export function FramePicker({
   frames,
+  photos,
   selectedId,
+  paletteId,
   onSelect,
+  onPaletteSelect,
   onContinue,
   onBack,
 }: FramePickerProps) {
+  const palette = framePalettes.find((item) => item.id === paletteId) ?? framePalettes[0]
+  const selectedFrame = frames.find((frame) => frame.id === selectedId) ?? frames[0]
+  const applyPalette = (frame: PhotoFrame): PhotoFrame => ({
+    ...frame,
+    accent: palette.accent,
+    accentSoft: palette.soft,
+  })
+
   return (
     <main className="flow-page frame-picker-page">
       <header className="flow-header">
@@ -26,24 +41,50 @@ export function FramePicker({
         <span className="step-count">02 / 03</span>
       </header>
 
-      <section className="frame-grid" aria-label="Daftar frame">
-        {frames.map((frame) => {
-          const selected = selectedId === frame.id
-          return (
-            <button
-              key={frame.id}
-              type="button"
-              className={`frame-option ${selected ? 'selected' : ''}`}
-              onClick={() => onSelect(frame)}
-              aria-pressed={selected}
-              aria-label={frame.name}
-            >
-              <FramePreview frame={frame} selected={selected} />
-              <strong className="frame-short-name">{frame.name}</strong>
-              <span className="select-mark">{selected ? '✓' : '○'}</span>
-            </button>
-          )
-        })}
+      <section className="frame-picker-pattern">
+        <div className="frame-large-preview" aria-label="Preview frame">
+          {selectedFrame && <FramePreview frame={applyPalette(selectedFrame)} photos={photos} />}
+        </div>
+
+        <div className="frame-picker-panel">
+          <section className="palette-section" aria-labelledby="palette-title">
+            <h1 id="palette-title">Color Palette</h1>
+            <div className="palette-grid">
+              {framePalettes.map((item) => (
+                <button
+                  key={item.id}
+                  className={`palette-swatch ${palette.id === item.id ? 'selected' : ''}`}
+                  type="button"
+                  style={{ '--swatch': item.accent } as React.CSSProperties}
+                  onClick={() => onPaletteSelect(item)}
+                  aria-label={item.name}
+                  aria-pressed={palette.id === item.id}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="template-section" aria-labelledby="template-title">
+            <h2 id="template-title">Pilih Frame</h2>
+            <div className="template-grid" aria-label="Daftar frame">
+              {frames.map((frame) => {
+                const selected = selectedId === frame.id
+                return (
+                  <button
+                    key={frame.id}
+                    type="button"
+                    className={`template-option ${selected ? 'selected' : ''}`}
+                    onClick={() => onSelect(frame)}
+                    aria-pressed={selected}
+                    aria-label={frame.name}
+                  >
+                    <FramePreview frame={applyPalette(frame)} compact photos={photos} />
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        </div>
       </section>
 
       <footer className="sticky-action-bar frame-picker-actions">

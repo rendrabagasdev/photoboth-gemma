@@ -10,6 +10,7 @@ import {
 import type { FrameService } from '../../frames/application/frame-service'
 import type { PhotoFrame } from '../../frames/domain/photo-frame'
 import { FramePicker } from '../../frames/presentation/frame-picker'
+import { framePalettes, type FramePalette } from '../../frames/domain/frame-palette'
 import type { SessionService } from '../../sessions/application/session-service'
 import type { BoothSession } from '../../sessions/domain/booth-session'
 import type { LivePhotoCapture } from '../../camera/application/capture-live-photo'
@@ -211,6 +212,7 @@ export function BoothApp({ container }: BoothAppProps) {
   const [frames, setFrames] = useState<PhotoFrame[]>([])
   const [session, setSession] = useState<BoothSession>()
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null)
+  const [paletteId, setPaletteId] = useState(framePalettes[0].id)
   const [cameraSlots, setCameraSlots] = useState<number[]>([0, 1, 2])
   const [photoTransforms, setPhotoTransforms] = useState<PhotoTransform[]>(
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
@@ -218,10 +220,11 @@ export function BoothApp({ container }: BoothAppProps) {
   const [framePickerOrigin, setFramePickerOrigin] = useState<'capture' | 'review'>('capture')
   const [fatalError, setFatalError] = useState('')
 
-  const selectedFrame = useMemo(
-    () => frames.find((frame) => frame.id === selectedFrameId) ?? frames[0],
-    [frames, selectedFrameId],
-  )
+  const selectedFrame = useMemo(() => {
+    const frame = frames.find((item) => item.id === selectedFrameId) ?? frames[0]
+    const palette = framePalettes.find((item) => item.id === paletteId) ?? framePalettes[0]
+    return frame ? { ...frame, accent: palette.accent, accentSoft: palette.soft } : undefined
+  }, [frames, paletteId, selectedFrameId])
 
   const loadFrames = async () => {
     await container.frameService.initialize()
@@ -269,6 +272,7 @@ export function BoothApp({ container }: BoothAppProps) {
       const capturingSession: BoothSession = { ...nextSession, status: 'capturing' }
       await container.sessionService.save(capturingSession)
       setSession(capturingSession)
+      setPaletteId(framePalettes[0].id)
       setCameraSlots([0, 1, 2])
       setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
       setFramePickerOrigin('capture')
@@ -282,6 +286,8 @@ export function BoothApp({ container }: BoothAppProps) {
     setSelectedFrameId(frame.id)
     persistSession((current) => ({ ...current, frameId: frame.id }))
   }
+
+  const choosePalette = (palette: FramePalette) => setPaletteId(palette.id)
 
   const continueFromFrames = () => {
     if (!selectedFrame) return
@@ -369,6 +375,7 @@ export function BoothApp({ container }: BoothAppProps) {
 
   const reset = () => {
     setSession(undefined)
+    setPaletteId(framePalettes[0].id)
     setCameraSlots([0, 1, 2])
     setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
     setFramePickerOrigin('capture')
@@ -422,8 +429,11 @@ export function BoothApp({ container }: BoothAppProps) {
     return (
       <FramePicker
         frames={frames}
+        photos={session?.photos ?? []}
         selectedId={selectedFrameId}
+        paletteId={paletteId}
         onSelect={chooseFrame}
+        onPaletteSelect={choosePalette}
         onContinue={continueFromFrames}
         onBack={() => {
           if (framePickerOrigin === 'review') {
