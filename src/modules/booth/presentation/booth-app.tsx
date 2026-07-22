@@ -141,7 +141,8 @@ function ResultPage({
   shareService: ShareService
   onDone: () => void
 }) {
-  const resultUrl = useObjectUrl(result)
+  const [photoSheet, setPhotoSheet] = useState<Blob>()
+  const resultUrl = useObjectUrl(photoSheet)
   const [actionError, setActionError] = useState('')
   const [qrImage, setQrImage] = useState('')
   const [sharing, setSharing] = useState(false)
@@ -151,12 +152,25 @@ function ResultPage({
 
   const print = () => window.print()
 
+  useEffect(() => {
+    let active = true
+    void composePhotoSheet(result)
+      .then((sheet) => {
+        if (active) setPhotoSheet(sheet)
+      })
+      .catch(() => {
+        if (active) setActionError('Hasil gagal dibuat.')
+      })
+    return () => {
+      active = false
+    }
+  }, [result])
+
   const createQr = useCallback(async () => {
-    if (!liveResult || shareInFlightRef.current || sharedResult) return
+    if (!liveResult || !photoSheet || shareInFlightRef.current || sharedResult) return
     shareInFlightRef.current = true
     setSharing(true)
     try {
-      const photoSheet = await composePhotoSheet(result)
       const shared = await shareService.publish(sessionId, { photo: photoSheet, live: liveResult })
       const image = await QRCode.toDataURL(shared.downloadUrl, {
         width: 420,
@@ -173,7 +187,7 @@ function ResultPage({
       shareInFlightRef.current = false
       setSharing(false)
     }
-  }, [liveResult, result, sessionId, shareService, sharedResult])
+  }, [liveResult, photoSheet, sessionId, shareService, sharedResult])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void createQr(), 0)

@@ -1321,7 +1321,7 @@
 .result-visual { min-height: 590px; position: relative; display: grid; place-items: center; }
 
 .final-photo-wrap {
-  width: min(200px, 48%);
+  width: min(320px, 68%);
   position: relative;
   z-index: 2;
   padding: 13px;
