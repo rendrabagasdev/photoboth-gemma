@@ -93,9 +93,7 @@ export function CameraCapture({
             Foto {activeSlot + 1} dari {totalSlots}
           </strong>
         </div>
-        <span className={`camera-pill ${cameraState === 'ready' ? 'online' : ''}`}>
-          <span /> Kamera
-        </span>
+
       </div>
 
       <div className="camera-stage">
@@ -132,17 +130,12 @@ export function CameraCapture({
         {cameraState === 'countdown' && (
           <div className="camera-overlay countdown" aria-live="assertive">
             <span>{countdown}</span>
-            <strong>Senyum!</strong>
+            <strong>NGUYU BOS!</strong>
           </div>
         )}
 
         {cameraState === 'flash' && <div className="camera-flash" />}
 
-        {(cameraState === 'countdown' || cameraState === 'live' || cameraState === 'flash') && (
-          <div className="live-capture-badge" aria-label="Live Photo sedang direkam">
-            <span /> LIVE
-          </div>
-        )}
 
         {cameraState === 'error' && (
           <div className="camera-overlay error-card">
@@ -154,7 +147,6 @@ export function CameraCapture({
       </div>
 
       <div className="camera-actions">
-        <p>{slots.length > 1 ? 'Tiga foto akan diambil otomatis.' : 'Foto yang dipilih akan diganti.'}</p>
         <button
           className="shutter-button"
           type="button"
@@ -164,7 +156,6 @@ export function CameraCapture({
         >
           <span />
         </button>
-        <p>Hitung mundur 3 detik.</p>
       </div>
     </section>
   )
