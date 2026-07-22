@@ -83,6 +83,7 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 - File PNG transparan.
 - Ukuran template strip `600 × 1800 px` atau 2 × 6 inci pada 300 DPI.
 - PNG merupakan satu desain strip penuh dan akan diduplikasi otomatis ke lembar 4R.
+- Tulisan **TOBFEST** ditambahkan otomatis pada area kosong bawah setiap strip.
 - Ukuran file maksimal 10 MB.
 - Frame disimpan secara lokal pada iPad dan tetap tersedia ketika offline.
 - Hasil unduhan berupa kanvas 4R portrait `1200 × 1800 px` berisi dua strip identik berukuran `600 × 1800 px`.

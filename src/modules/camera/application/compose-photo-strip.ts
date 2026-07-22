@@ -59,9 +59,6 @@ function drawPresetTemplate(context: CanvasRenderingContext2D, frame: PhotoFrame
 
   context.fillStyle = frame.accent
   context.fillRect(0, TEMPLATE_HEIGHT - 132, TEMPLATE_WIDTH, 132)
-  context.fillStyle = '#171711'
-  context.font = '900 64px Arial, sans-serif'
-  context.fillText('TOBFEST', 70, TEMPLATE_HEIGHT - 43)
 
   context.fillStyle = frame.accentSoft
   context.beginPath()
@@ -108,6 +105,11 @@ export async function composePhotoStrip(
   } else {
     drawPresetTemplate(context, frame)
   }
+
+  context.fillStyle = '#171711'
+  context.font = '900 76px Arial, sans-serif'
+  context.textAlign = 'center'
+  context.fillText('TOBFEST', TEMPLATE_WIDTH / 2, 1535)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

@@ -42,11 +42,6 @@ def main() -> None:
         draw.rounded_rectangle(slot, radius=20, outline=(23, 23, 17, 255), width=12)
         draw.text((300, slot[3] + 14), f"0{index}", font=font(22), fill=(23, 23, 17, 255), anchor="ma")
 
-    title_layer = Image.new("RGBA", (500, 110), (0, 0, 0, 0))
-    title_draw = ImageDraw.Draw(title_layer)
-    title_draw.text((250, 55), "TOBFEST", font=font(58), fill=(23, 23, 17, 255), anchor="mm")
-    image.alpha_composite(title_layer, (50, 1500))
-
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     image.save(OUTPUT, format="PNG", optimize=True)
 

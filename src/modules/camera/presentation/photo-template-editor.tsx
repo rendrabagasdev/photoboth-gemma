@@ -172,11 +172,11 @@ export function PhotoTemplateEditor({
 
         {frame.kind === 'preset' && (
           <div className="preset-full-template" aria-hidden="true">
-            <strong>TOBFEST</strong>
             <span>0{activeSlot + 1}</span>
           </div>
         )}
         {overlayUrl && <img className="full-template-overlay" src={overlayUrl} alt="" />}
+        <strong className="template-brand" aria-hidden="true">TOBFEST</strong>
       </div>
 
       <div className="editor-controls">

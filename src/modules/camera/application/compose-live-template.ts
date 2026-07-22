@@ -140,10 +140,16 @@ export async function composeLiveTemplate(
       ))
       context.fillStyle = frame.accent
       context.fillRect(offsetX, canvas.height - 66, TEMPLATE_WIDTH * OUTPUT_SCALE, 66)
-      context.fillStyle = '#171711'
-      context.font = '900 32px Arial, sans-serif'
-      context.fillText('TOBFEST', offsetX + 35, canvas.height - 21)
     }
+
+    context.fillStyle = '#171711'
+    context.font = '900 38px Arial, sans-serif'
+    context.textAlign = 'center'
+    context.fillText(
+      'TOBFEST',
+      offsetX + (TEMPLATE_WIDTH * OUTPUT_SCALE) / 2,
+      1535 * OUTPUT_SCALE,
+    )
   }
 
   const draw = () => {
