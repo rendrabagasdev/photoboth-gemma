@@ -90,6 +90,7 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 - Pada halaman review, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang.
 - Live Photo dapat diputar di halaman review dan dibagikan sebagai MP4/WebM dari halaman hasil.
 - Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG dan versi live MP4/WebM.
+- QR dibuat otomatis setelah hasil selesai diproses.
 - Saat **Mulai lagi** ditekan, QR langsung dinonaktifkan dan kedua file dihapus dari object storage. Batas 24 jam tetap menjadi pengaman jika sesi tidak ditutup normal.
 
 Area transparan template mengikuti koordinat berikut pada kanvas `1200 × 1800 px`:

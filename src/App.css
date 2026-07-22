@@ -1302,7 +1302,7 @@
 .result-copy > p:not(.eyebrow) { max-width: 470px; margin: 28px 0; color: var(--muted); line-height: 1.65; }
 .result-buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
 .download-qr {
-  width: min(320px, 76vw);
+  width: min(280px, 68vw);
   display: block;
   padding: 12px;
   border: 2px solid var(--ink);
@@ -1310,17 +1310,18 @@
   background: var(--paper);
   box-shadow: 8px 8px 0 var(--ink);
 }
-.result-visual { min-height: 650px; position: relative; display: grid; place-items: center; }
+.qr-loading { display: block; margin: 18px 0; font-size: 24px; font-weight: 900; letter-spacing: 0.24em; }
+.result-visual { min-height: 590px; position: relative; display: grid; place-items: center; }
 
 .final-photo-wrap {
-  width: min(390px, 80%);
+  width: min(320px, 68%);
   position: relative;
   z-index: 2;
   padding: 13px;
   border: 2px solid var(--ink);
   background: #fff;
-  box-shadow: 14px 16px 0 var(--ink);
-  transform: rotate(4deg);
+  box-shadow: 10px 12px 0 var(--ink);
+  transform: rotate(2deg);
 }
 
 .final-photo-wrap img { width: 100%; display: block; }

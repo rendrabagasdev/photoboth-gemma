@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
@@ -146,31 +146,40 @@ function ResultPage({
   const [sharing, setSharing] = useState(false)
   const [destroying, setDestroying] = useState(false)
   const [sharedResult, setSharedResult] = useState<SharedResult>()
+  const shareInFlightRef = useRef(false)
 
   const print = () => window.print()
 
-  const createQr = async () => {
-    if (!liveResult || sharing) return
+  const createQr = useCallback(async () => {
+    if (!liveResult || shareInFlightRef.current || sharedResult) return
+    shareInFlightRef.current = true
     setSharing(true)
     try {
       const shared = await shareService.publish(sessionId, { photo: result, live: liveResult })
-      setSharedResult(shared)
-      setQrImage(await QRCode.toDataURL(shared.downloadUrl, {
+      const image = await QRCode.toDataURL(shared.downloadUrl, {
         width: 420,
         margin: 2,
         color: { dark: '#171711', light: '#fffaf0' },
         errorCorrectionLevel: 'M',
-      }))
+      })
+      setSharedResult(shared)
+      setQrImage(image)
       setActionError('')
     } catch {
       setActionError('QR gagal dibuat.')
     } finally {
+      shareInFlightRef.current = false
       setSharing(false)
     }
-  }
+  }, [liveResult, result, sessionId, shareService, sharedResult])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void createQr(), 0)
+    return () => window.clearTimeout(timer)
+  }, [createQr])
 
   const startAgain = async () => {
-    if (destroying) return
+    if (destroying || sharing) return
     if (!sharedResult) {
       onDone()
       return
@@ -191,12 +200,13 @@ function ResultPage({
       <div className="result-copy">
         <h1>Selesai.</h1>
         <div className="result-buttons">
-          {!qrImage && <button className="primary-button" type="button" onClick={() => void createQr()} disabled={!liveResult || sharing}>{sharing ? '…' : 'QR'}</button>}
           <button className="secondary-button" type="button" onClick={print}>▣ Cetak</button>
         </div>
+        {sharing && <span className="qr-loading" aria-live="polite">•••</span>}
         {qrImage && <img className="download-qr" src={qrImage} alt="QR unduh foto dan Live Photo" />}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        <button className="text-button" type="button" onClick={() => void startAgain()} disabled={destroying}>{destroying ? '…' : 'Mulai lagi →'}</button>
+        {actionError && !qrImage && <button className="secondary-button" type="button" onClick={() => void createQr()}>Coba lagi</button>}
+        <button className="text-button" type="button" onClick={() => void startAgain()} disabled={destroying || sharing}>{destroying ? '…' : 'Mulai lagi →'}</button>
       </div>
       <div className="result-visual">
         <div className="final-photo-wrap">{resultUrl && <img src={resultUrl} alt="Hasil akhir photobooth" />}</div>
