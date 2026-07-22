@@ -42,6 +42,14 @@ def main() -> None:
         draw.rounded_rectangle(slot, radius=20, outline=(23, 23, 17, 255), width=12)
         draw.text((300, slot[3] + 14), f"0{index}", font=font(22), fill=(23, 23, 17, 255), anchor="ma")
 
+    draw.text(
+        (WIDTH // 2, 1535),
+        "TOBFEST",
+        font=font(76),
+        fill=(23, 23, 17, 255),
+        anchor="ms",
+    )
+
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     image.save(OUTPUT, format="PNG", optimize=True)
 
