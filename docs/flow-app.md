@@ -262,7 +262,7 @@ Dashboard operator dapat dibuka melalui shortcut yang tidak terlihat pada alur p
 - nama frame;
 - file frame berformat PNG transparan;
 - thumbnail preview, dibuat otomatis dari file frame;
-- orientasi template `portrait` dengan rasio `2:3`;
+- orientasi template strip `portrait` dengan rasio `1:3`;
 - status **Aktif/Tidak Aktif**;
 - urutan tampilan pada layar pemilihan frame.
 
@@ -280,7 +280,7 @@ Dashboard operator dapat dibuka melalui shortcut yang tidak terlihat pada alur p
 **Validasi:**
 
 - hanya menerima PNG dengan area transparan untuk penempatan foto;
-- template penuh wajib menggunakan ukuran 4R portrait `1200 × 1800 px` (rasio `2:3`), sedangkan setiap area foto tetap `4:3`;
+- template strip wajib berukuran `600 × 1800 px` (setengah 4R), sedangkan setiap area foto tetap `4:3`;
 - ukuran file maksimum ditentukan melalui konfigurasi, misalnya 10 MB;
 - nama frame wajib diisi dan tidak boleh duplikat;
 - frame yang tidak valid tidak boleh diaktifkan.
@@ -393,7 +393,7 @@ Nilai timeout harus dapat diubah dari konfigurasi acara.
 - Aplikasi mengambil tepat 3 foto dengan hitung mundur.
 - Setiap slot foto dapat di-retake tanpa menghapus slot lain.
 - Frame terpilih muncul pada hasil final.
-- Hasil menggunakan satu template penuh 4R portrait (`1200 × 1800 px`, rasio `2:3`) dengan tiga area foto 4:3.
+- Hasil unduhan menggunakan kanvas 4R portrait (`1200 × 1800 px`) berisi dua strip identik `600 × 1800 px`, masing-masing dengan tiga area foto 4:3.
 - Posisi setiap foto dapat digeser dan diperbesar sebelum hasil akhir dibuat.
 - Hasil dapat diunduh sebagai JPG atau PNG dengan resolusi cetak yang memadai.
 - Kegagalan printer tidak menghalangi pengguna mengunduh hasil.

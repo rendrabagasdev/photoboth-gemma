@@ -81,24 +81,23 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 ## Format Frame
 
 - File PNG transparan.
-- Ukuran template penuh wajib 4R portrait dengan rasio `2:3`.
-- Ukuran yang disarankan `1200 × 1800 px` atau 4 × 6 inci pada 300 DPI.
-- PNG merupakan satu template penuh, bukan template yang diulang per foto.
+- Ukuran template strip `600 × 1800 px` atau 2 × 6 inci pada 300 DPI.
+- PNG merupakan satu desain strip penuh dan akan diduplikasi otomatis ke lembar 4R.
 - Ukuran file maksimal 10 MB.
 - Frame disimpan secara lokal pada iPad dan tetap tersedia ketika offline.
-- Hasil akhir berupa satu kanvas cetak 4R portrait `1200 × 1800 px` dengan tiga area foto 4:3.
+- Hasil unduhan berupa kanvas 4R portrait `1200 × 1800 px` berisi dua strip identik berukuran `600 × 1800 px`.
 - Pada halaman review, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang.
 - Live Photo dapat diputar di halaman review dan dibagikan sebagai MP4 dari halaman hasil.
 - Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG dan video live MP4.
 - QR dibuat otomatis setelah hasil selesai diproses.
 - Saat **Mulai lagi** ditekan, QR langsung dinonaktifkan dan kedua file dihapus dari object storage. Batas 24 jam tetap menjadi pengaman jika sesi tidak ditutup normal.
 
-Area transparan template mengikuti koordinat berikut pada kanvas `1200 × 1800 px`:
+Area transparan template mengikuti koordinat berikut pada kanvas strip `600 × 1800 px`:
 
-- Foto 1: `x 220`, `y 15`, ukuran `760 × 570`.
-- Foto 2: `x 220`, `y 615`, ukuran `760 × 570`.
-- Foto 3: `x 220`, `y 1215`, ukuran `760 × 570`.
+- Foto 1: `x 30`, `y 45`, ukuran `540 × 405`.
+- Foto 2: `x 30`, `y 480`, ukuran `540 × 405`.
+- Foto 3: `x 30`, `y 915`, ukuran `540 × 405`.
 
-Contoh siap pakai: [tobfest-4r-portrait-example.png](public/templates/tobfest-4r-portrait-example.png).
+Contoh siap pakai: [tobfest-half-4r-strip-example.png](public/templates/tobfest-half-4r-strip-example.png).
 
 Spesifikasi flow lengkap tersedia di [docs/flow-app.md](docs/flow-app.md).

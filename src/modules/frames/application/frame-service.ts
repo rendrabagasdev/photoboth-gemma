@@ -42,11 +42,13 @@ export class FrameService {
     }
 
     const bitmap = await createImageBitmap(input.imageBlob)
+    const width = bitmap.width
+    const height = bitmap.height
     const ratio = bitmap.width / bitmap.height
     bitmap.close()
 
-    if (Math.abs(ratio - 2 / 3) > 0.01) {
-      throw new Error('Template penuh harus berukuran 4R portrait, yaitu 1200 × 1800 px.')
+    if (width !== 600 || height !== 1800 || Math.abs(ratio - 1 / 3) > 0.01) {
+      throw new Error('Template strip harus berukuran 600 × 1800 px.')
     }
 
     const frames = await this.list()

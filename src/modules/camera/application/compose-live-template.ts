@@ -3,6 +3,7 @@ import type { LivePhotoClip } from '../../sessions/domain/booth-session'
 import {
   TEMPLATE_HEIGHT,
   TEMPLATE_WIDTH,
+  PRINT_WIDTH,
   clampPhotoTransform,
   defaultPhotoTransforms,
   templateSlots,
@@ -55,7 +56,7 @@ export async function composeLiveTemplate(
   if (!fallback) throw new Error('Live Photo belum tersedia.')
 
   const canvas = document.createElement('canvas')
-  canvas.width = TEMPLATE_WIDTH * OUTPUT_SCALE
+  canvas.width = PRINT_WIDTH * OUTPUT_SCALE
   canvas.height = TEMPLATE_HEIGHT * OUTPUT_SCALE
   const context = canvas.getContext('2d')
   const stream = canvas.captureStream?.(24)
@@ -79,13 +80,13 @@ export async function composeLiveTemplate(
     overlay = await loadImage(overlayUrl)
   }
 
-  const draw = () => {
+  const drawStrip = (offsetX: number) => {
     context.fillStyle = frame.accentSoft
-    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillRect(offsetX, 0, TEMPLATE_WIDTH * OUTPUT_SCALE, canvas.height)
 
     templateSlots.forEach((sourceSlot, index) => {
       const slot = {
-        x: sourceSlot.x * OUTPUT_SCALE,
+        x: offsetX + sourceSlot.x * OUTPUT_SCALE,
         y: sourceSlot.y * OUTPUT_SCALE,
         width: sourceSlot.width * OUTPUT_SCALE,
         height: sourceSlot.height * OUTPUT_SCALE,
@@ -121,22 +122,33 @@ export async function composeLiveTemplate(
     })
 
     if (overlay) {
-      context.drawImage(overlay, 0, 0, canvas.width, canvas.height)
+      context.drawImage(
+        overlay,
+        offsetX,
+        0,
+        TEMPLATE_WIDTH * OUTPUT_SCALE,
+        TEMPLATE_HEIGHT * OUTPUT_SCALE,
+      )
     } else {
       context.strokeStyle = frame.accent
       context.lineWidth = 10
       templateSlots.forEach((slot) => context.strokeRect(
-        (slot.x - 10) * OUTPUT_SCALE,
+        offsetX + (slot.x - 10) * OUTPUT_SCALE,
         (slot.y - 10) * OUTPUT_SCALE,
         (slot.width + 20) * OUTPUT_SCALE,
         (slot.height + 20) * OUTPUT_SCALE,
       ))
       context.fillStyle = frame.accent
-      context.fillRect(0, canvas.height - 66, canvas.width, 66)
+      context.fillRect(offsetX, canvas.height - 66, TEMPLATE_WIDTH * OUTPUT_SCALE, 66)
       context.fillStyle = '#171711'
       context.font = '900 32px Arial, sans-serif'
-      context.fillText('TOBFEST', 35, canvas.height - 21)
+      context.fillText('TOBFEST', offsetX + 35, canvas.height - 21)
     }
+  }
+
+  const draw = () => {
+    drawStrip(0)
+    drawStrip(TEMPLATE_WIDTH * OUTPUT_SCALE)
   }
 
   const chunks: BlobPart[] = []

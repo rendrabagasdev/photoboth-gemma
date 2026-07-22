@@ -1,6 +1,8 @@
-// 4R portrait: 4 × 6 inch at 300 DPI.
-export const TEMPLATE_WIDTH = 1200
+// One photobooth strip: half of a 4R portrait sheet at 300 DPI.
+export const TEMPLATE_WIDTH = 600
 export const TEMPLATE_HEIGHT = 1800
+export const PRINT_WIDTH = 1200
+export const PRINT_HEIGHT = 1800
 
 export type TemplateSlot = {
   x: number
@@ -16,9 +18,9 @@ export type PhotoTransform = {
 }
 
 export const templateSlots: TemplateSlot[] = [
-  { x: 220, y: 15, width: 760, height: 570 },
-  { x: 220, y: 615, width: 760, height: 570 },
-  { x: 220, y: 1215, width: 760, height: 570 },
+  { x: 30, y: 45, width: 540, height: 405 },
+  { x: 30, y: 480, width: 540, height: 405 },
+  { x: 30, y: 915, width: 540, height: 405 },
 ]
 
 export const defaultPhotoTransforms: PhotoTransform[] = templateSlots.map(() => ({

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
+import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import { PhotoTemplateEditor } from '../../camera/presentation/photo-template-editor'
 import {
@@ -155,7 +156,8 @@ function ResultPage({
     shareInFlightRef.current = true
     setSharing(true)
     try {
-      const shared = await shareService.publish(sessionId, { photo: result, live: liveResult })
+      const photoSheet = await composePhotoSheet(result)
+      const shared = await shareService.publish(sessionId, { photo: photoSheet, live: liveResult })
       const image = await QRCode.toDataURL(shared.downloadUrl, {
         width: 420,
         margin: 2,

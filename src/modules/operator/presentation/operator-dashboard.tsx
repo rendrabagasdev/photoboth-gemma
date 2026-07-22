@@ -18,7 +18,7 @@ export function OperatorDashboard({
   onFramesChanged,
   onExit,
 }: OperatorDashboardProps) {
-  const exampleTemplateUrl = `${import.meta.env.BASE_URL}templates/tobfest-4r-portrait-example.png`
+  const exampleTemplateUrl = `${import.meta.env.BASE_URL}templates/tobfest-half-4r-strip-example.png`
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [frames, setFrames] = useState<PhotoFrame[]>([])
   const [sessions, setSessions] = useState<BoothSession[]>([])
@@ -249,11 +249,11 @@ export function OperatorDashboard({
             <button className="dialog-close" type="button" onClick={() => setShowAddFrame(false)} aria-label="Tutup">×</button>
             <p className="eyebrow">FRAME BARU</p>
             <h2>Tambahkan desain acara</h2>
-            <p>Gunakan template penuh PNG transparan 4R portrait berukuran 1200 × 1800 px.</p>
+            <p>Gunakan PNG transparan setengah 4R berukuran 600 × 1800 px.</p>
             <a
               className="template-example-link"
               href={exampleTemplateUrl}
-              download="tobfest-4r-portrait-example.png"
+              download="tobfest-half-4r-strip-example.png"
             >
               ↓ Unduh contoh template
             </a>
