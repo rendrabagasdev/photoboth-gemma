@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { localSharePlugin } from './build/local-share-plugin.js'
 
 export default defineConfig({
   envPrefix: ['VITE_', 'APP_'],
   plugins: [
+    localSharePlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

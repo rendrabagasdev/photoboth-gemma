@@ -44,6 +44,8 @@ npm install
 npm run dev
 ```
 
+Pada mode development, endpoint QR tersedia langsung melalui Vite. Untuk memindai QR dari ponsel, buka alamat **Network** yang ditampilkan Vite, bukan alamat `localhost`.
+
 Build produksi:
 
 ```bash

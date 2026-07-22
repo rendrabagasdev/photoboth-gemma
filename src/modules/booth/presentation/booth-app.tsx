@@ -146,6 +146,8 @@ function ResultPage({
   const [destroying, setDestroying] = useState(false)
   const [sharedResult, setSharedResult] = useState<SharedResult>()
 
+  const print = () => window.print()
+
   const createQr = async () => {
     if (!liveResult || sharing) return
     setSharing(true)
@@ -189,6 +191,7 @@ function ResultPage({
         <h1>Selesai.</h1>
         <div className="result-buttons">
           {!qrImage && <button className="primary-button" type="button" onClick={() => void createQr()} disabled={!liveResult || sharing}>{sharing ? '…' : 'QR'}</button>}
+          <button className="secondary-button" type="button" onClick={print}>▣ Cetak</button>
         </div>
         {qrImage && <img className="download-qr" src={qrImage} alt="QR unduh foto dan Live Photo" />}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
