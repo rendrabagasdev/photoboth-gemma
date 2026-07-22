@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
+import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import { PhotoTemplateEditor } from '../../camera/presentation/photo-template-editor'
 import {
   defaultPhotoTransforms,
@@ -10,13 +11,15 @@ import type { FrameService } from '../../frames/application/frame-service'
 import type { PhotoFrame } from '../../frames/domain/photo-frame'
 import { FramePicker } from '../../frames/presentation/frame-picker'
 import type { SessionService } from '../../sessions/application/session-service'
-import type { BoothSession, LivePhotoClip } from '../../sessions/domain/booth-session'
+import type { BoothSession } from '../../sessions/domain/booth-session'
 import type { LivePhotoCapture } from '../../camera/application/capture-live-photo'
 import { useObjectUrl } from '../../../shared/presentation/use-object-url'
 import { OperatorLock } from '../../operator/presentation/operator-lock'
 import { OperatorDashboard } from '../../operator/presentation/operator-dashboard'
 import type { UnlockApp } from '../../app-lock/application/use-cases/unlock-app'
 import type { TokenServices } from '../../app-lock/application/ports/token-services'
+import type { ShareService } from '../../sharing/application/share-service'
+import QRCode from 'qrcode'
 
 type BoothScreen =
   | 'idle'
@@ -34,6 +37,7 @@ type BoothAppProps = {
     sessionService: SessionService
     unlockApp: UnlockApp
     tokenService: TokenServices
+    shareService: ShareService
   }
 }
 
@@ -124,85 +128,38 @@ function ProcessingPage() {
 
 function ResultPage({
   result,
-  livePhotos,
+  liveResult,
   sessionId,
+  shareService,
   onDone,
 }: {
   result: Blob
-  livePhotos: BoothSession['livePhotos']
+  liveResult?: Blob
   sessionId: string
+  shareService: ShareService
   onDone: () => void
 }) {
   const resultUrl = useObjectUrl(result)
-  const [downloaded, setDownloaded] = useState(false)
-  const [printed, setPrinted] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [qrImage, setQrImage] = useState('')
+  const [sharing, setSharing] = useState(false)
 
-  const download = async () => {
-    if (!resultUrl) return
-    const filename = `tobfest-${sessionId.slice(0, 8)}.jpg`
-    const file = new File([result], filename, { type: 'image/jpeg' })
-
+  const createQr = async () => {
+    if (!liveResult || sharing) return
+    setSharing(true)
     try {
-      const shareData: ShareData = { files: [file], title: 'TOBFest' }
-      if (navigator.share && navigator.canShare?.(shareData)) {
-        await navigator.share(shareData)
-      } else {
-        const link = document.createElement('a')
-        link.href = resultUrl
-        link.download = filename
-        link.style.display = 'none'
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-      }
-      setDownloaded(true)
+      const shared = await shareService.publish(sessionId, { photo: result, live: liveResult })
+      setQrImage(await QRCode.toDataURL(shared.downloadUrl, {
+        width: 420,
+        margin: 2,
+        color: { dark: '#171711', light: '#fffaf0' },
+        errorCorrectionLevel: 'M',
+      }))
       setActionError('')
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === 'AbortError') return
-      setActionError('Gagal menyimpan foto.')
-    }
-  }
-
-  const print = () => {
-    setPrinted(true)
-    setActionError('')
-    window.print()
-  }
-
-  const shareLivePhotos = async () => {
-    const clips = livePhotos.filter(
-      (clip): clip is LivePhotoClip => Boolean(clip?.videoBlob.size),
-    )
-    if (clips.length === 0) return
-
-    const files = clips.map((clip, index) => {
-      const extension = clip.mimeType.includes('mp4') ? 'mp4' : 'webm'
-      return new File(
-        [clip.videoBlob],
-        `tobfest-live-${sessionId.slice(0, 8)}-${index + 1}.${extension}`,
-        { type: clip.mimeType },
-      )
-    })
-
-    try {
-      const shareData: ShareData = { files, title: 'TOBFest Live Photo' }
-      if (navigator.share && navigator.canShare?.(shareData)) {
-        await navigator.share(shareData)
-      } else {
-        files.forEach((file) => {
-          const url = URL.createObjectURL(file)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = file.name
-          link.click()
-          window.setTimeout(() => URL.revokeObjectURL(url), 1_000)
-        })
-      }
-      setActionError('')
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === 'AbortError') return
-      setActionError('Gagal membagikan Live Photo.')
+    } catch {
+      setActionError('QR gagal dibuat.')
+    } finally {
+      setSharing(false)
     }
   }
 
@@ -211,10 +168,9 @@ function ResultPage({
       <div className="result-copy">
         <h1>Selesai.</h1>
         <div className="result-buttons">
-          <button className="primary-button" type="button" onClick={() => void download()}>↓ {downloaded ? 'Tersimpan' : 'Simpan'}</button>
-          <button className="secondary-button" type="button" onClick={print}>▣ {printed ? 'Siap' : 'Cetak'}</button>
-          <button className="secondary-button" type="button" onClick={() => void shareLivePhotos()} disabled={!livePhotos.some(Boolean)}>● Live</button>
+          {!qrImage && <button className="primary-button" type="button" onClick={() => void createQr()} disabled={!liveResult || sharing}>{sharing ? '…' : 'QR'}</button>}
         </div>
+        {qrImage && <img className="download-qr" src={qrImage} alt="QR unduh foto dan Live Photo" />}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
         <button className="text-button" type="button" onClick={onDone}>Mulai lagi →</button>
       </div>
@@ -360,12 +316,21 @@ export function BoothApp({ container }: BoothAppProps) {
     setScreen('processing')
     persistSession((current) => ({ ...current, status: 'processing' }))
     try {
-      const finalImage = await composePhotoStrip(session.photos, selectedFrame, photoTransforms)
+      const [finalImage, finalLive] = await Promise.all([
+        composePhotoStrip(session.photos, selectedFrame, photoTransforms),
+        composeLiveTemplate(
+          session.photos,
+          session.livePhotos ?? [],
+          selectedFrame,
+          photoTransforms,
+        ).catch(() => undefined),
+      ])
       const completed: BoothSession = {
         ...session,
         frameId: selectedFrame.id,
         status: 'completed',
         finalImage,
+        finalLive,
         completedAt: new Date().toISOString(),
       }
       await container.sessionService.save(completed)
@@ -490,7 +455,7 @@ export function BoothApp({ container }: BoothAppProps) {
   if (screen === 'processing') return <ProcessingPage />
 
   if (screen === 'result' && session?.finalImage) {
-    return <ResultPage result={session.finalImage} livePhotos={session.livePhotos ?? []} sessionId={session.id} onDone={reset} />
+    return <ResultPage result={session.finalImage} liveResult={session.finalLive} sessionId={session.id} shareService={container.shareService} onDone={reset} />
   }
 
   return <LandingPage onStart={() => void startSession()} onOperator={() => void openOperator()} />

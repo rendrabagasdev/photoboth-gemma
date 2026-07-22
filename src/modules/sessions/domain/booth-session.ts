@@ -20,6 +20,7 @@ export type BoothSession = {
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>
   finalImage?: Blob
+  finalLive?: Blob
   printStatus: 'not-requested' | 'queued' | 'printed' | 'failed'
   createdAt: string
   completedAt: string | null

@@ -77,6 +77,8 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 - Hasil akhir berupa satu kanvas cetak 4R portrait `1200 × 1800 px` dengan tiga area foto 4:3.
 - Pada halaman review, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang.
 - Live Photo dapat diputar di halaman review dan dibagikan sebagai MP4/WebM dari halaman hasil.
+- Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG dan versi live MP4/WebM.
+- Tautan QR berlaku 24 jam dan menyimpan file sementara pada object storage.
 
 Area transparan template mengikuti koordinat berikut pada kanvas `1200 × 1800 px`:
 
