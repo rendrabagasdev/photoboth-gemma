@@ -154,7 +154,7 @@ async function downloadFile(env: Env, id: string, kind: 'photo' | 'live'): Promi
 
 function downloadPage(id: string): Response {
   return new Response(`<!doctype html>
-<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#fffaf0"><title>TOBFest</title>
 <style>*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;background:#fffaf0;color:#171711;font-family:Arial,sans-serif}main{width:min(100%,420px);text-align:center}h1{font-size:42px;margin:0 0 22px}img{width:min(100%,280px);aspect-ratio:2/3;object-fit:cover;border:2px solid #171711;box-shadow:10px 10px 0 #171711;margin-bottom:30px}.actions{display:grid;gap:12px}a{display:block;padding:17px 20px;border:2px solid #171711;border-radius:999px;color:#171711;background:#b8f43d;text-decoration:none;font-weight:900}a:last-child{background:#ff654d;color:#fff}small{display:block;margin-top:18px;color:#68685f}</style></head>
 <body><main><h1>TOBFEST</h1><img src="/api/shares/${id}/photo" alt="Hasil foto"><div class="actions"><a href="/api/shares/${id}/photo">Foto</a><a href="/api/shares/${id}/live">Live</a></div><small>Aktif selama sesi</small></main></body></html>`, {

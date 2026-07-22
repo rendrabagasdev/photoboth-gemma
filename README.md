@@ -53,6 +53,16 @@ npm run lint
 npm run build
 ```
 
+### Deployment Vercel
+
+Endpoint QR pada domain produksi menggunakan Vercel Functions dan Vercel Blob:
+
+1. Di dashboard Vercel, buka project → **Storage** → buat atau hubungkan **Private Blob Store**.
+2. Pastikan environment `BLOB_READ_WRITE_TOKEN` tersedia untuk Production.
+3. Deploy ulang project. Route `POST /api/shares` akan dibuat dari folder `api/`.
+
+File Blob bersifat private dan hanya dialirkan melalui endpoint unduhan aplikasi.
+
 ## Dashboard Operator
 
 Tekan tombol pengaturan di kanan atas landing screen. PIN wajib dikonfigurasi melalui environment dan tidak memiliki nilai default di dalam kode.

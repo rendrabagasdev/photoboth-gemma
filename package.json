@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && npm run build:worker",
+    "build": "tsc -b && tsc -p tsconfig.api.json && vite build && npm run build:worker",
     "build:worker": "esbuild worker/index.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/server/index.js && node scripts/stage-hosting.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/blob": "^2.6.1",
     "canvas-confetti": "^1.9.4",
     "dexie": "^4.4.4",
     "qrcode": "^1.5.4",
