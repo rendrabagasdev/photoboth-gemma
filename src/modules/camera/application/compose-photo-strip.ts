@@ -4,10 +4,12 @@ import {
   TEMPLATE_WIDTH,
   clampPhotoTransform,
   defaultPhotoTransforms,
-  templateSlots,
+  resolveTemplateLayout,
+  resolveTemplateSlots,
   type PhotoTransform,
   type TemplateSlot,
 } from '../domain/template-layout'
+import { drawFrameDecorations } from './draw-frame-decoration'
 
 function loadImage(source: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -38,32 +40,17 @@ function drawPositionedPhoto(
 
   const width = baseWidth * transform.scale
   const height = baseHeight * transform.scale
-  const centerX = slot.x + slot.width / 2 + transform.offsetX * slot.width
-  const centerY = slot.y + slot.height / 2 + transform.offsetY * slot.height
+  const offsetX = transform.offsetX * slot.width
+  const offsetY = transform.offsetY * slot.height
 
   context.save()
+  context.translate(slot.x + slot.width / 2, slot.y + slot.height / 2)
+  context.rotate(((slot.rotation ?? 0) * Math.PI) / 180)
   context.beginPath()
-  context.rect(slot.x, slot.y, slot.width, slot.height)
+  context.rect(-slot.width / 2, -slot.height / 2, slot.width, slot.height)
   context.clip()
-  context.drawImage(image, centerX - width / 2, centerY - height / 2, width, height)
+  context.drawImage(image, offsetX - width / 2, offsetY - height / 2, width, height)
   context.restore()
-}
-
-function drawPresetTemplate(context: CanvasRenderingContext2D, frame: PhotoFrame): void {
-  context.strokeStyle = frame.accent
-  context.lineWidth = 20
-
-  templateSlots.forEach((slot) => {
-    context.strokeRect(slot.x - 10, slot.y - 10, slot.width + 20, slot.height + 20)
-  })
-
-  context.fillStyle = frame.accent
-  context.fillRect(0, TEMPLATE_HEIGHT - 132, TEMPLATE_WIDTH, 132)
-
-  context.fillStyle = frame.accentSoft
-  context.beginPath()
-  context.arc(105, 95, 145, 0, Math.PI * 2)
-  context.fill()
 }
 
 export async function composePhotoStrip(
@@ -71,8 +58,10 @@ export async function composePhotoStrip(
   frame: PhotoFrame,
   transforms: PhotoTransform[] = defaultPhotoTransforms,
 ): Promise<Blob> {
-  if (photos.length !== 4) {
-    throw new Error('Empat foto diperlukan untuk membuat hasil akhir.')
+  const layout = resolveTemplateLayout(frame.layoutId)
+  const slots = resolveTemplateSlots(frame.layoutId)
+  if (photos.length !== slots.length) {
+    throw new Error('Tiga foto diperlukan untuk membuat hasil akhir.')
   }
 
   const canvas = document.createElement('canvas')
@@ -89,7 +78,7 @@ export async function composePhotoStrip(
 
   const images = await Promise.all(photos.map(loadImage))
   images.forEach((image, index) => {
-    const slot = templateSlots[index]
+    const slot = slots[index]
     const transform = transforms[index] ?? defaultPhotoTransforms[index]
     if (slot && transform) drawPositionedPhoto(context, image, slot, transform)
   })
@@ -102,14 +91,21 @@ export async function composePhotoStrip(
     } finally {
       URL.revokeObjectURL(overlayUrl)
     }
-  } else {
-    drawPresetTemplate(context, frame)
   }
 
+  drawFrameDecorations(context, frame)
+
   context.fillStyle = '#171711'
-  context.font = '900 76px Arial, sans-serif'
+  context.font = `900 ${layout.brand.fontSize}px Arial, sans-serif`
   context.textAlign = 'center'
-  context.fillText('TOBFEST', TEMPLATE_WIDTH / 2, 1615)
+  context.fillText(layout.brand.text, layout.brand.x, layout.brand.y)
+  context.font = `500 ${layout.copyright.fontSize}px Arial, sans-serif`
+  context.textAlign = 'right'
+  context.fillText(
+    layout.copyright.text,
+    layout.copyright.x,
+    layout.copyright.y,
+  )
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

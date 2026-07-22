@@ -36,7 +36,8 @@ Pengelola konfigurasi acara, aset frame, batas cetak, dan riwayat sesi. Untuk MV
 - Akses kamera depan iPad dan pratinjau secara langsung.
 - Operator dapat menambahkan dan mengelola frame.
 - Pengunjung dapat memilih frame dari daftar frame yang diaktifkan operator.
-- Pengambilan 4 foto dengan hitung mundur.
+- Pengambilan 3 foto dengan hitung mundur.
+- Pilihan enam layout strip Frame 4–9, semuanya tetap menggunakan 3 foto landscape 4:3, termasuk layout foto miring.
 - Retake per foto sebelum finalisasi.
 - Komposisi foto menjadi satu hasil akhir.
 - Simpan sesi secara lokal agar tetap berfungsi saat internet tidak stabil.
@@ -390,10 +391,11 @@ Nilai timeout harus dapat diubah dari konfigurasi acara.
 
 - Pengunjung dapat menyelesaikan alur dari landing hingga unduh tanpa login.
 - Kamera meminta izin dan menampilkan pesan yang tepat untuk setiap status izin.
-- Aplikasi mengambil tepat 4 foto dengan hitung mundur.
+- Aplikasi mengambil tepat 3 foto dengan hitung mundur.
 - Setiap slot foto dapat di-retake tanpa menghapus slot lain.
 - Frame terpilih muncul pada hasil final.
-- Hasil unduhan menggunakan kanvas 4R portrait (`1200 × 1800 px`) berisi dua strip identik `600 × 1800 px`, masing-masing dengan empat area foto 4:3.
+- Perubahan layout frame langsung terlihat pada editor dan identik dengan hasil JPG serta MP4.
+- Hasil unduhan menggunakan kanvas 4R portrait (`1200 × 1800 px`) berisi dua strip identik `600 × 1800 px`, masing-masing dengan tiga area foto 4:3.
 - Posisi setiap foto dapat digeser dan diperbesar sebelum hasil akhir dibuat.
 - Hasil dapat diunduh sebagai JPG atau PNG dengan resolusi cetak yang memadai.
 - Kegagalan printer tidak menghalangi pengguna mengunduh hasil.
@@ -401,6 +403,7 @@ Nilai timeout harus dapat diubah dari konfigurasi acara.
 - Alur capture dan render utama tetap berjalan tanpa koneksi internet.
 - Seluruh tombol utama mudah digunakan pada layar sentuh dan memiliki state loading/disabled yang jelas.
 - Operator dapat menambahkan frame PNG dari iPad dan melihat preview sebelum menyimpan.
+- Operator memilih layout foto yang sesuai saat mengunggah PNG, dengan paket contoh seluruh layout tersedia sebagai ZIP.
 - Operator dapat mengaktifkan, menonaktifkan, mengurutkan, dan memilih frame default.
 - Pengunjung hanya melihat frame aktif dan frame pilihannya digunakan pada hasil final.
 - Aplikasi dapat menyelesaikan beberapa sesi pengunjung secara berurutan pada iPad tanpa memperlihatkan hasil sesi sebelumnya.

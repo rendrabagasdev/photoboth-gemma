@@ -1,10 +1,11 @@
 import type { FrameRepository } from './frame-repository'
-import { defaultFrames, type PhotoFrame } from '../domain/photo-frame'
+import { defaultFrames, type PhotoFrame, type PhotoLayoutId } from '../domain/photo-frame'
 
 export type AddFrameInput = {
   name: string
   imageBlob: Blob
   isActive: boolean
+  layoutId: PhotoLayoutId
 }
 
 export class FrameService {
@@ -66,6 +67,7 @@ export class FrameService {
       name: input.name.trim(),
       description: 'Frame buatan operator.',
       kind: 'uploaded',
+      layoutId: input.layoutId,
       orientation: 'portrait',
       accent: '#ff5a36',
       accentSoft: '#ffe5db',

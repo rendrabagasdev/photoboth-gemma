@@ -6,9 +6,10 @@ import {
   TEMPLATE_HEIGHT,
   TEMPLATE_WIDTH,
   clampPhotoTransform,
-  templateSlots,
+  resolveTemplateSlots,
   type PhotoTransform,
 } from '../domain/template-layout'
+import { TemplateDecoration } from './template-decoration'
 
 type PhotoTemplateEditorProps = {
   photos: string[]
@@ -43,6 +44,7 @@ export function PhotoTemplateEditor({
   const liveUrlTwo = useObjectUrl(livePhotos[1]?.videoBlob)
   const liveUrlThree = useObjectUrl(livePhotos[2]?.videoBlob)
   const liveUrls = [liveUrlOne, liveUrlTwo, liveUrlThree]
+  const slots = resolveTemplateSlots(frame.layoutId)
 
   const beginDrag = (slot: number, event: ReactPointerEvent<HTMLDivElement>) => {
     const transform = transforms[slot]
@@ -63,13 +65,19 @@ export function PhotoTemplateEditor({
     const drag = dragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
 
-    const bounds = event.currentTarget.getBoundingClientRect()
+    const slot = slots[drag.slot]
+    if (!slot) return
+    const radians = ((slot.rotation ?? 0) * Math.PI) / 180
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    const localX = Math.cos(radians) * deltaX + Math.sin(radians) * deltaY
+    const localY = -Math.sin(radians) * deltaX + Math.cos(radians) * deltaY
     onTransformChange(
       drag.slot,
       clampPhotoTransform({
         ...drag.origin,
-        offsetX: drag.origin.offsetX + (event.clientX - drag.startX) / bounds.width,
-        offsetY: drag.origin.offsetY + (event.clientY - drag.startY) / bounds.height,
+        offsetX: drag.origin.offsetX + localX / event.currentTarget.clientWidth,
+        offsetY: drag.origin.offsetY + localY / event.currentTarget.clientHeight,
       }),
     )
   }
@@ -96,7 +104,7 @@ export function PhotoTemplateEditor({
           aspectRatio: `${TEMPLATE_WIDTH} / ${TEMPLATE_HEIGHT}`,
         } as React.CSSProperties}
       >
-        {templateSlots.map((slot, index) => {
+        {slots.map((slot, index) => {
           const transform = transforms[index]
           const photo = photos[index]
           const liveUrl = liveUrls[index]
@@ -111,6 +119,7 @@ export function PhotoTemplateEditor({
                 top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
                 width: `${(slot.width / TEMPLATE_WIDTH) * 100}%`,
                 height: `${(slot.height / TEMPLATE_HEIGHT) * 100}%`,
+                transform: `rotate(${slot.rotation ?? 0}deg)`,
               }}
               onPointerDown={(event) => beginDrag(index, event)}
               onPointerMove={movePhoto}
@@ -170,13 +179,8 @@ export function PhotoTemplateEditor({
           )
         })}
 
-        {frame.kind === 'preset' && (
-          <div className="preset-full-template" aria-hidden="true">
-            <span>0{activeSlot + 1}</span>
-          </div>
-        )}
         {overlayUrl && <img className="full-template-overlay" src={overlayUrl} alt="" />}
-        <strong className="template-brand" aria-hidden="true">TOBFEST</strong>
+        <TemplateDecoration frame={frame} />
       </div>
 
       <div className="editor-controls">

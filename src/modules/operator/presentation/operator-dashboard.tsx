@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { FrameService } from '../../frames/application/frame-service'
-import type { PhotoFrame } from '../../frames/domain/photo-frame'
+import type { PhotoFrame, PhotoLayoutId } from '../../frames/domain/photo-frame'
 import { FramePreview } from '../../frames/presentation/frame-preview'
+import { TEMPLATE_HEIGHT, TEMPLATE_WIDTH, templateLayoutOptions } from '../../camera/domain/template-layout'
 import type { SessionService } from '../../sessions/application/session-service'
 import type { BoothSession } from '../../sessions/domain/booth-session'
 
@@ -18,13 +19,14 @@ export function OperatorDashboard({
   onFramesChanged,
   onExit,
 }: OperatorDashboardProps) {
-  const exampleTemplateUrl = `${import.meta.env.BASE_URL}templates/tobfest-half-4r-strip-example.png`
+  const exampleTemplateUrl = `${import.meta.env.BASE_URL}templates/tobfest-template-layouts.zip`
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [frames, setFrames] = useState<PhotoFrame[]>([])
   const [sessions, setSessions] = useState<BoothSession[]>([])
   const [showAddFrame, setShowAddFrame] = useState(false)
   const [frameName, setFrameName] = useState('')
   const [frameFile, setFrameFile] = useState<File>()
+  const [frameLayout, setFrameLayout] = useState<PhotoLayoutId>('full')
   const [frameActive, setFrameActive] = useState(true)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
@@ -88,9 +90,15 @@ export function OperatorDashboard({
 
     setBusy(true)
     try {
-      await frameService.add({ name: frameName, imageBlob: frameFile, isActive: frameActive })
+      await frameService.add({
+        name: frameName,
+        imageBlob: frameFile,
+        isActive: frameActive,
+        layoutId: frameLayout,
+      })
       setFrameName('')
       setFrameFile(undefined)
+      setFrameLayout('full')
       setFrameActive(true)
       if (fileInputRef.current) fileInputRef.current.value = ''
       setShowAddFrame(false)
@@ -106,6 +114,13 @@ export function OperatorDashboard({
   const changeFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     setFrameFile(file)
+    if (file) {
+      const match = file.name.match(/frame[\s_-]*([4-9])/i)
+      const detected = match
+        ? templateLayoutOptions[Number(match[1]) - 4]
+        : undefined
+      if (detected) setFrameLayout(detected.id)
+    }
     setError('')
   }
 
@@ -202,7 +217,14 @@ export function OperatorDashboard({
               <article className={`manager-frame-card ${frame.isActive ? '' : 'inactive'}`} key={frame.id}>
                 <FramePreview frame={frame} compact />
                 <div className="manager-frame-copy">
-                  <div><strong>{frame.name}</strong><small>{frame.kind === 'preset' ? 'Frame bawaan' : 'Unggahan operator'}</small></div>
+                  <div>
+                    <strong>{frame.name}</strong>
+                    <small>
+                      {frame.kind === 'preset' ? 'Frame bawaan' : 'Unggahan operator'}
+                      {' · '}
+                      {templateLayoutOptions.find((layout) => layout.id === frame.layoutId)?.name ?? 'Frame 4'}
+                    </small>
+                  </div>
                   {frame.isDefault && <span className="default-badge">DEFAULT</span>}
                 </div>
                 <div className="manager-actions">
@@ -249,16 +271,46 @@ export function OperatorDashboard({
             <button className="dialog-close" type="button" onClick={() => setShowAddFrame(false)} aria-label="Tutup">×</button>
             <p className="eyebrow">FRAME BARU</p>
             <h2>Tambahkan desain acara</h2>
-            <p>Gunakan PNG transparan setengah 4R berukuran 600 × 1800 px.</p>
+            <p>Gunakan PNG transparan setengah 4R berukuran 600 × 1800 px. File Frame 4–9 dari ZIP akan dikenali otomatis.</p>
             <a
               className="template-example-link"
               href={exampleTemplateUrl}
-              download="tobfest-half-4r-strip-example.png"
+              download="tobfest-template-layouts.zip"
             >
-              ↓ Unduh contoh template
+              ↓ Unduh semua layout (.zip)
             </a>
             <label htmlFor="frame-name">Nama frame</label>
             <input id="frame-name" value={frameName} onChange={(event) => setFrameName(event.target.value)} placeholder="Contoh: Opening Night" />
+            <fieldset className="layout-choice-field">
+              <legend>Layout PNG</legend>
+              <div className="layout-choice-grid">
+                {templateLayoutOptions.map((layout) => (
+                  <button
+                    className={frameLayout === layout.id ? 'active' : ''}
+                    type="button"
+                    key={layout.id}
+                    onClick={() => setFrameLayout(layout.id)}
+                    aria-pressed={frameLayout === layout.id}
+                  >
+                    <span className="layout-diagram" aria-hidden="true">
+                      {layout.slots.map((slot, index) => (
+                        <i
+                          key={index}
+                          style={{
+                            left: `${(slot.x / TEMPLATE_WIDTH) * 100}%`,
+                            top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
+                            width: `${(slot.width / TEMPLATE_WIDTH) * 100}%`,
+                            height: `${(slot.height / TEMPLATE_HEIGHT) * 100}%`,
+                            transform: `rotate(${slot.rotation ?? 0}deg)`,
+                          }}
+                        />
+                      ))}
+                    </span>
+                    <small>{layout.name}</small>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <label className={`upload-field ${frameFile ? 'has-file' : ''}`} htmlFor="frame-file">
               <span>{frameFile ? '✓' : '＋'}</span>
               <strong>{frameFile?.name ?? 'Pilih file PNG'}</strong>

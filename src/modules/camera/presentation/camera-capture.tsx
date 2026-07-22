@@ -5,12 +5,17 @@ import { captureLivePhoto, type LivePhotoCapture } from '../application/capture-
 type CameraCaptureProps = {
   slots: number[]
   totalSlots: number
+  photos: string[]
+  startInReview?: boolean
   onCapture: (slot: number, capture: LivePhotoCapture) => void
   onComplete: () => void
   onCancel: () => void
 }
 
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
+type TimerSeconds = 3 | 5 | 10
+type CameraFilter = 'normal' | 'warm' | 'mono'
+type LensMode = 'normal' | 'wide'
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
@@ -19,6 +24,8 @@ function wait(milliseconds: number): Promise<void> {
 export function CameraCapture({
   slots,
   totalSlots,
+  photos,
+  startInReview = false,
   onCapture,
   onComplete,
   onCancel,
@@ -29,6 +36,15 @@ export function CameraCapture({
   const [cameraState, setCameraState] = useState<CameraState>('requesting')
   const [countdown, setCountdown] = useState(3)
   const [activeSlot, setActiveSlot] = useState(slots[0] ?? 0)
+  const [timerSeconds, setTimerSeconds] = useState<TimerSeconds>(3)
+  const [showGrid, setShowGrid] = useState(false)
+  const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
+  const [bright, setBright] = useState(false)
+  const [lensMode, setLensMode] = useState<LensMode>('normal')
+  const [slotCursor, setSlotCursor] = useState(0)
+  const [acceptedPhotos, setAcceptedPhotos] = useState<string[]>(photos)
+  const [captureComplete, setCaptureComplete] = useState(startInReview)
+  const [selectedPhotoSlot, setSelectedPhotoSlot] = useState<number>()
 
   useEffect(() => {
     activeRef.current = true
@@ -37,22 +53,80 @@ export function CameraCapture({
     }
   }, [])
 
-  const runCapture = async () => {
+  const captureStill = () => {
+    const video = webcamRef.current?.video
+    if (!video?.videoWidth || !video.videoHeight) return null
+
+    const outputWidth = 1600
+    const outputHeight = 1200
+    const sourceAspect = video.videoWidth / video.videoHeight
+    const targetAspect = outputWidth / outputHeight
+    let sourceWidth = video.videoWidth
+    let sourceHeight = video.videoHeight
+
+    if (sourceAspect > targetAspect) sourceWidth = video.videoHeight * targetAspect
+    else sourceHeight = video.videoWidth / targetAspect
+
+    const zoom = lensMode === 'normal' ? 1.14 : 1
+    sourceWidth /= zoom
+    sourceHeight /= zoom
+    const sourceX = (video.videoWidth - sourceWidth) / 2
+    const sourceY = (video.videoHeight - sourceHeight) / 2
+    const canvas = document.createElement('canvas')
+    canvas.width = outputWidth
+    canvas.height = outputHeight
+    const context = canvas.getContext('2d')
+    if (!context) return null
+
+    const filters = cameraFilter === 'warm'
+      ? ['sepia(0.2)', 'saturate(1.22)', 'contrast(1.04)']
+      : cameraFilter === 'mono'
+        ? ['grayscale(1)', 'contrast(1.08)']
+        : []
+    filters.push(`brightness(${bright ? 1.2 : 1})`)
+    context.filter = filters.join(' ')
+    context.translate(outputWidth, 0)
+    context.scale(-1, 1)
+    context.drawImage(
+      video,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      outputWidth,
+      outputHeight,
+    )
+    return canvas.toDataURL('image/jpeg', 0.92)
+  }
+
+  const runCapture = async (options?: {
+    slot?: number
+    cursor?: number
+    stopAfterCapture?: boolean
+    previewAfterCapture?: boolean
+  }) => {
     if (cameraState !== 'ready') return
 
-    for (const slot of slots) {
-      if (!activeRef.current) return
-      setActiveSlot(slot)
+    let currentCursor = options?.cursor ?? slotCursor
+    let currentSlot = options?.slot ?? activeSlot
+
+    while (activeRef.current) {
       setCameraState('countdown')
 
-      setCountdown(3)
-      await wait(1_000)
-      if (!activeRef.current) return
+      let remaining = timerSeconds
+      setCountdown(remaining)
+      while (remaining > 2) {
+        await wait(1_000)
+        if (!activeRef.current) return
+        remaining -= 1
+        setCountdown(remaining)
+      }
 
-      setCountdown(2)
       const capturePromise = captureLivePhoto(
         streamRef.current,
-        () => activeRef.current ? webcamRef.current?.getScreenshot() ?? null : null,
+        () => activeRef.current ? captureStill() : null,
         () => {
           if (!activeRef.current) return
           setCameraState('flash')
@@ -72,90 +146,185 @@ export function CameraCapture({
         return
       }
 
-      onCapture(slot, capture)
-      await wait(450)
-    }
+      const capturedSlot = currentSlot
+      onCapture(capturedSlot, capture)
+      setAcceptedPhotos((current) => {
+        const next = [...current]
+        next[capturedSlot] = capture.photo
+        return next
+      })
 
-    if (activeRef.current) {
-      onComplete()
+      const isLastSlot = currentCursor >= slots.length - 1
+      if (options?.stopAfterCapture || isLastSlot) {
+        setCaptureComplete(true)
+        if (options?.previewAfterCapture) setSelectedPhotoSlot(capturedSlot)
+        setCameraState('ready')
+        return
+      }
+
+      currentCursor += 1
+      currentSlot = slots[currentCursor] ?? currentSlot
+      setSlotCursor(currentCursor)
+      setActiveSlot(currentSlot)
+      await wait(350)
     }
   }
 
+  const cycleFilter = () => {
+    setCameraFilter((current) => current === 'normal' ? 'warm' : current === 'warm' ? 'mono' : 'normal')
+  }
+
+  const selectAccepted = (slot: number) => {
+    setActiveSlot(slot)
+    setSelectedPhotoSlot(slot)
+  }
+
+  const retakeSelected = () => {
+    if (selectedPhotoSlot === undefined) return
+    const slot = selectedPhotoSlot
+    setSelectedPhotoSlot(undefined)
+    setActiveSlot(slot)
+    setCaptureComplete(false)
+    void runCapture({ slot, cursor: 0, stopAfterCapture: true, previewAfterCapture: true })
+  }
+
+  const controlsDisabled = cameraState !== 'ready' || captureComplete
+
   return (
     <section className="camera-screen" aria-label="Ambil foto">
-      <div className="camera-toolbar">
-        <button className="icon-button light" type="button" onClick={onCancel} aria-label="Kembali">
+      <header className="camera-topbar">
+        <button className="camera-back" type="button" onClick={onCancel} aria-label="Kembali">
           ←
         </button>
-        <div className="capture-progress">
-          <span>SIAPKAN POSE</span>
-          <strong>
-            Foto {activeSlot + 1} dari {totalSlots}
-          </strong>
+        <div className="camera-timers" aria-label="Pilih timer">
+          {([3, 5, 10] as TimerSeconds[]).map((seconds) => (
+            <button
+              className={timerSeconds === seconds ? 'active' : ''}
+              type="button"
+              key={seconds}
+              onClick={() => setTimerSeconds(seconds)}
+              disabled={controlsDisabled}
+            >
+              <span aria-hidden="true">◷</span> {seconds}s
+            </button>
+          ))}
+        </div>
+        <div className="camera-lenses" aria-label="Pilih lensa">
+          {(['normal', 'wide'] as LensMode[]).map((mode) => (
+            <button
+              className={lensMode === mode ? 'active' : ''}
+              type="button"
+              key={mode}
+              onClick={() => setLensMode(mode)}
+              disabled={controlsDisabled}
+            >
+              {mode === 'normal' ? 'Normal' : 'Wide'}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className="camera-workspace">
+        <aside className="camera-tools" aria-label="Pengaturan kamera">
+          <button className={showGrid ? 'active' : ''} type="button" onClick={() => setShowGrid((current) => !current)} disabled={controlsDisabled}>
+            <span aria-hidden="true">▦</span><strong>Kisi</strong>
+          </button>
+          <button className={cameraFilter !== 'normal' ? 'active' : ''} type="button" onClick={cycleFilter} disabled={controlsDisabled}>
+            <span aria-hidden="true">◉</span><strong>Filter</strong>
+          </button>
+          <button className={bright ? 'active' : ''} type="button" onClick={() => setBright((current) => !current)} disabled={controlsDisabled}>
+            <span aria-hidden="true">☀</span><strong>Bersinar</strong>
+          </button>
+        </aside>
+
+        <div className="camera-main">
+          <div className="camera-stage">
+            <Webcam
+              ref={webcamRef}
+              audio={false}
+              className={`webcam camera-lens-${lensMode} camera-filter-${cameraFilter} ${bright ? 'camera-light-on' : ''}`}
+              mirrored
+              screenshotFormat="image/jpeg"
+              screenshotQuality={0.92}
+              videoConstraints={{ facingMode: 'user', width: 1600, height: 1200, aspectRatio: 4 / 3 }}
+              onUserMedia={(stream) => {
+                streamRef.current = stream
+                setCameraState('ready')
+              }}
+              onUserMediaError={() => setCameraState('error')}
+            />
+
+            <div className="capture-progress">
+              <strong>Foto {activeSlot + 1} / {totalSlots}</strong>
+            </div>
+            {showGrid && selectedPhotoSlot === undefined && <div className="camera-grid" aria-hidden="true" />}
+
+            {selectedPhotoSlot !== undefined && acceptedPhotos[selectedPhotoSlot] && (
+              <img
+                className="camera-selected-photo"
+                src={acceptedPhotos[selectedPhotoSlot]}
+                alt={`Preview foto ${selectedPhotoSlot + 1}`}
+              />
+            )}
+
+            {cameraState === 'requesting' && (
+              <div className="camera-overlay compact">
+                <span className="spinner" />
+                <strong>Menyiapkan kamera…</strong>
+              </div>
+            )}
+
+            {cameraState === 'countdown' && (
+              <div className="camera-overlay countdown" aria-live="assertive">
+                <span>{countdown}</span>
+              </div>
+            )}
+
+            {cameraState === 'flash' && <div className="camera-flash" />}
+
+            {cameraState === 'error' && (
+              <div className="camera-overlay error-card">
+                <span className="large-icon">!</span>
+                <strong>Kamera belum dapat digunakan</strong>
+                <p>Izinkan akses kamera, lalu muat ulang aplikasi.</p>
+              </div>
+            )}
+          </div>
+
+          {selectedPhotoSlot !== undefined ? (
+            <div className="camera-photo-actions">
+              <button className="camera-retake-action" type="button" onClick={retakeSelected}>Retake</button>
+              <button className="shutter-button" type="button" onClick={onComplete}>Lanjut</button>
+            </div>
+          ) : captureComplete ? (
+            <button className="shutter-button" type="button" onClick={onComplete}>Lanjut</button>
+          ) : (
+            <button
+              className="shutter-button"
+              type="button"
+              onClick={() => void runCapture()}
+              disabled={cameraState !== 'ready'}
+            >
+              <span aria-hidden="true">▣</span> Mulai Foto
+            </button>
+          )}
         </div>
 
-      </div>
-
-      <div className="camera-stage">
-        <Webcam
-          ref={webcamRef}
-          audio={false}
-          className="webcam"
-          mirrored
-          screenshotFormat="image/jpeg"
-          screenshotQuality={0.92}
-          forceScreenshotSourceSize
-          videoConstraints={{ facingMode: 'user', width: 1600, height: 1200, aspectRatio: 4 / 3 }}
-          onUserMedia={(stream) => {
-            streamRef.current = stream
-            setCameraState('ready')
-          }}
-          onUserMediaError={() => setCameraState('error')}
-        />
-
-        <div className="camera-guide" aria-hidden="true">
-          <span className="corner top-left" />
-          <span className="corner top-right" />
-          <span className="corner bottom-left" />
-          <span className="corner bottom-right" />
-        </div>
-
-        {cameraState === 'requesting' && (
-          <div className="camera-overlay compact">
-            <span className="spinner" />
-            <strong>Menyiapkan kamera…</strong>
-          </div>
-        )}
-
-        {cameraState === 'countdown' && (
-          <div className="camera-overlay countdown" aria-live="assertive">
-            <span>{countdown}</span>
-            <strong>NGUYU BOS!</strong>
-          </div>
-        )}
-
-        {cameraState === 'flash' && <div className="camera-flash" />}
-
-
-        {cameraState === 'error' && (
-          <div className="camera-overlay error-card">
-            <span className="large-icon">!</span>
-            <strong>Kamera belum dapat digunakan</strong>
-            <p>Izinkan akses kamera di pengaturan Safari, lalu muat ulang aplikasi.</p>
-          </div>
-        )}
-      </div>
-
-      <div className="camera-actions">
-        <button
-          className="shutter-button"
-          type="button"
-          onClick={runCapture}
-          disabled={cameraState !== 'ready'}
-          aria-label="Mulai mengambil foto"
-        >
-          <span />
-        </button>
+        <aside className="camera-results" aria-label="Hasil foto">
+          {Array.from({ length: totalSlots }, (_, slot) => (
+            <button
+              className={`${acceptedPhotos[slot] ? 'filled' : ''} ${selectedPhotoSlot === slot ? 'active' : ''}`}
+              type="button"
+              key={slot}
+              onClick={() => acceptedPhotos[slot] && selectAccepted(slot)}
+              disabled={!acceptedPhotos[slot] || cameraState !== 'ready'}
+              aria-label={acceptedPhotos[slot] ? `Tinjau foto ${slot + 1}` : `Foto ${slot + 1} belum diambil`}
+            >
+              {acceptedPhotos[slot] && <img src={acceptedPhotos[slot]} alt={`Foto ${slot + 1}`} />}
+              <span>{slot + 1}</span>
+            </button>
+          ))}
+        </aside>
       </div>
     </section>
   )

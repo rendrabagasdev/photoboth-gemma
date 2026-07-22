@@ -1,14 +1,21 @@
 import type { PhotoFrame } from '../domain/photo-frame'
 import { framePalettes, type FramePalette } from '../domain/frame-palette'
 import { FramePreview } from './frame-preview'
+import { PhotoTemplateEditor } from '../../camera/presentation/photo-template-editor'
+import type { PhotoTransform } from '../../camera/domain/template-layout'
+import type { LivePhotoClip } from '../../sessions/domain/booth-session'
 
 type FramePickerProps = {
   frames: PhotoFrame[]
   photos: string[]
+  livePhotos: Array<LivePhotoClip | undefined>
+  transforms: PhotoTransform[]
   selectedId: string | null
   paletteId: string
   onSelect: (frame: PhotoFrame) => void
   onPaletteSelect: (palette: FramePalette) => void
+  onTransformChange: (slot: number, transform: PhotoTransform) => void
+  onRetake: (slot: number) => void
   onContinue: () => void
   onBack: () => void
 }
@@ -16,10 +23,14 @@ type FramePickerProps = {
 export function FramePicker({
   frames,
   photos,
+  livePhotos,
+  transforms,
   selectedId,
   paletteId,
   onSelect,
   onPaletteSelect,
+  onTransformChange,
+  onRetake,
   onContinue,
   onBack,
 }: FramePickerProps) {
@@ -38,12 +49,21 @@ export function FramePicker({
           ←
         </button>
         <span />
-        <span className="step-count">02 / 03</span>
+        <span className="step-count">02 / 02</span>
       </header>
 
       <section className="frame-picker-pattern">
-        <div className="frame-large-preview" aria-label="Preview frame">
-          {selectedFrame && <FramePreview frame={applyPalette(selectedFrame)} photos={photos} />}
+        <div className="frame-large-preview" aria-label="Atur foto dan preview frame">
+          {selectedFrame && (
+            <PhotoTemplateEditor
+              photos={photos}
+              livePhotos={livePhotos}
+              frame={applyPalette(selectedFrame)}
+              transforms={transforms}
+              onTransformChange={onTransformChange}
+              onRetake={onRetake}
+            />
+          )}
         </div>
 
         <div className="frame-picker-panel">

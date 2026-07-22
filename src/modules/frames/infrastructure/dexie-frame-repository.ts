@@ -22,9 +22,20 @@ export class DexieFrameRepository implements FrameRepository {
   }
 
   async seed(frames: PhotoFrame[]): Promise<void> {
-    const count = await this.database.frames.count()
-    if (count === 0) {
-      await this.database.frames.bulkPut(frames)
-    }
+    const existingFrames = await this.database.frames.toArray()
+    const existingById = new Map(existingFrames.map((frame) => [frame.id, frame]))
+    const presetFrames = frames.map((frame) => {
+      const existing = existingById.get(frame.id)
+      if (!existing) return frame
+      return {
+        ...frame,
+        ...existing,
+        kind: 'preset' as const,
+        presetStyle: frame.presetStyle,
+        layoutId: frame.layoutId,
+        sortOrder: frame.sortOrder,
+      }
+    })
+    await this.database.frames.bulkPut(presetFrames)
   }
 }

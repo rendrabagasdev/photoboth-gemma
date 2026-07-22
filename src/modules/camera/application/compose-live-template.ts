@@ -6,9 +6,11 @@ import {
   PRINT_WIDTH,
   clampPhotoTransform,
   defaultPhotoTransforms,
-  templateSlots,
+  resolveTemplateLayout,
+  resolveTemplateSlots,
   type PhotoTransform,
 } from '../domain/template-layout'
+import { drawFrameDecorations } from './draw-frame-decoration'
 
 const OUTPUT_SCALE = 0.5
 const LIVE_DURATION_MS = 3_000
@@ -52,6 +54,8 @@ export async function composeLiveTemplate(
   frame: PhotoFrame,
   transforms: PhotoTransform[] = defaultPhotoTransforms,
 ): Promise<Blob> {
+  const layout = resolveTemplateLayout(frame.layoutId)
+  const slots = resolveTemplateSlots(frame.layoutId)
   const fallback = livePhotos.find((clip) => clip?.videoBlob.size)?.videoBlob
   if (!fallback) throw new Error('Live Photo belum tersedia.')
 
@@ -84,12 +88,13 @@ export async function composeLiveTemplate(
     context.fillStyle = frame.accentSoft
     context.fillRect(offsetX, 0, TEMPLATE_WIDTH * OUTPUT_SCALE, canvas.height)
 
-    templateSlots.forEach((sourceSlot, index) => {
+    slots.forEach((sourceSlot, index) => {
       const slot = {
         x: offsetX + sourceSlot.x * OUTPUT_SCALE,
         y: sourceSlot.y * OUTPUT_SCALE,
         width: sourceSlot.width * OUTPUT_SCALE,
         height: sourceSlot.height * OUTPUT_SCALE,
+        rotation: sourceSlot.rotation ?? 0,
       }
       const media = videoEntries[index]?.video ?? images[index]
       const transform = clampPhotoTransform(transforms[index] ?? defaultPhotoTransforms[index])
@@ -104,19 +109,20 @@ export async function composeLiveTemplate(
       else height = slot.width / mediaRatio
       width *= transform.scale
       height *= transform.scale
-      const centerX = slot.x + slot.width / 2 + transform.offsetX * slot.width
-      const centerY = slot.y + slot.height / 2 + transform.offsetY * slot.height
+      const localX = transform.offsetX * slot.width
+      const localY = transform.offsetY * slot.height
 
       context.save()
+      context.translate(slot.x + slot.width / 2, slot.y + slot.height / 2)
+      context.rotate((slot.rotation * Math.PI) / 180)
       context.beginPath()
-      context.rect(slot.x, slot.y, slot.width, slot.height)
+      context.rect(-slot.width / 2, -slot.height / 2, slot.width, slot.height)
       context.clip()
       if (media instanceof HTMLVideoElement) {
-        context.translate(centerX, 0)
         context.scale(-1, 1)
-        context.drawImage(media, -width / 2, centerY - height / 2, width, height)
+        context.drawImage(media, -localX - width / 2, localY - height / 2, width, height)
       } else {
-        context.drawImage(media, centerX - width / 2, centerY - height / 2, width, height)
+        context.drawImage(media, localX - width / 2, localY - height / 2, width, height)
       }
       context.restore()
     })
@@ -129,26 +135,24 @@ export async function composeLiveTemplate(
         TEMPLATE_WIDTH * OUTPUT_SCALE,
         TEMPLATE_HEIGHT * OUTPUT_SCALE,
       )
-    } else {
-      context.strokeStyle = frame.accent
-      context.lineWidth = 10
-      templateSlots.forEach((slot) => context.strokeRect(
-        offsetX + (slot.x - 10) * OUTPUT_SCALE,
-        (slot.y - 10) * OUTPUT_SCALE,
-        (slot.width + 20) * OUTPUT_SCALE,
-        (slot.height + 20) * OUTPUT_SCALE,
-      ))
-      context.fillStyle = frame.accent
-      context.fillRect(offsetX, canvas.height - 66, TEMPLATE_WIDTH * OUTPUT_SCALE, 66)
     }
 
+    drawFrameDecorations(context, frame, OUTPUT_SCALE, offsetX)
+
     context.fillStyle = '#171711'
-    context.font = '900 38px Arial, sans-serif'
+    context.font = `900 ${layout.brand.fontSize * OUTPUT_SCALE}px Arial, sans-serif`
     context.textAlign = 'center'
     context.fillText(
-      'TOBFEST',
-      offsetX + (TEMPLATE_WIDTH * OUTPUT_SCALE) / 2,
-      1615 * OUTPUT_SCALE,
+      layout.brand.text,
+      offsetX + layout.brand.x * OUTPUT_SCALE,
+      layout.brand.y * OUTPUT_SCALE,
+    )
+    context.font = `500 ${layout.copyright.fontSize * OUTPUT_SCALE}px Arial, sans-serif`
+    context.textAlign = 'right'
+    context.fillText(
+      layout.copyright.text,
+      offsetX + layout.copyright.x * OUTPUT_SCALE,
+      layout.copyright.y * OUTPUT_SCALE,
     )
   }
 

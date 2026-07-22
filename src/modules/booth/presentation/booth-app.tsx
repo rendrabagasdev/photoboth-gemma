@@ -3,7 +3,6 @@ import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
 import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
-import { PhotoTemplateEditor } from '../../camera/presentation/photo-template-editor'
 import {
   defaultPhotoTransforms,
   type PhotoTransform,
@@ -27,7 +26,6 @@ type BoothScreen =
   | 'idle'
   | 'frames'
   | 'camera'
-  | 'review'
   | 'processing'
   | 'result'
   | 'operator-lock'
@@ -43,8 +41,13 @@ type BoothAppProps = {
   }
 }
 
-const TOTAL_PHOTOS = 4
-const ALL_CAMERA_SLOTS = [0, 1, 2, 3]
+const TOTAL_PHOTOS = 3
+const ALL_CAMERA_SLOTS = [0, 1, 2]
+
+function readThemeColor(variable: string, fallback: string) {
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(variable).trim()
+  return value || fallback
+}
 const OPERATOR_TOKEN_KEY = 'tobfest-operator-token'
 
 function LandingPage({ onStart, onOperator }: { onStart: () => void; onOperator: () => void }) {
@@ -62,59 +65,6 @@ function LandingPage({ onStart, onOperator }: { onStart: () => void; onOperator:
         <span aria-hidden="true">●</span>
         Mulai Foto
       </button>
-    </main>
-  )
-}
-
-function ReviewPage({
-  photos,
-  livePhotos,
-  frame,
-  onRetake,
-  onChangeFrame,
-  transforms,
-  onTransformChange,
-  onFinish,
-}: {
-  photos: string[]
-  livePhotos: BoothSession['livePhotos']
-  frame: PhotoFrame
-  onRetake: (slot: number) => void
-  onChangeFrame: () => void
-  transforms: PhotoTransform[]
-  onTransformChange: (slot: number, transform: PhotoTransform) => void
-  onFinish: () => void
-}) {
-  return (
-    <main className="flow-page review-page">
-      <header className="flow-header">
-        <button className="icon-button" type="button" onClick={onChangeFrame} aria-label="Ganti frame">←</button>
-        <span />
-        <span className="step-count">03 / 03</span>
-      </header>
-
-      <section className="review-layout">
-        <div className="review-copy">
-          <div className="selected-frame-chip" style={{ '--chip-color': frame.accent } as React.CSSProperties}>
-            <span /> <p><strong>{frame.name}</strong></p>
-            <button type="button" onClick={onChangeFrame}>Ganti</button>
-          </div>
-        </div>
-
-        <PhotoTemplateEditor
-          photos={photos}
-          livePhotos={livePhotos}
-          frame={frame}
-          transforms={transforms}
-          onTransformChange={onTransformChange}
-          onRetake={onRetake}
-        />
-      </section>
-
-      <footer className="sticky-action-bar review-actions">
-        <span />
-        <button className="primary-button" type="button" onClick={onFinish}>Lanjut <span>→</span></button>
-      </footer>
     </main>
   )
 }
@@ -176,7 +126,10 @@ function ResultPage({
       const image = await QRCode.toDataURL(shared.downloadUrl, {
         width: 420,
         margin: 2,
-        color: { dark: '#171711', light: '#fffaf0' },
+        color: {
+          dark: readThemeColor('--theme-ink', '#171711'),
+          light: readThemeColor('--theme-paper', '#fffaf0'),
+        },
         errorCorrectionLevel: 'M',
       })
       setSharedResult(shared)
@@ -242,7 +195,6 @@ export function BoothApp({ container }: BoothAppProps) {
   const [photoTransforms, setPhotoTransforms] = useState<PhotoTransform[]>(
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
   )
-  const [framePickerOrigin, setFramePickerOrigin] = useState<'capture' | 'review'>('capture')
   const [fatalError, setFatalError] = useState('')
 
   const selectedFrame = useMemo(() => {
@@ -300,7 +252,6 @@ export function BoothApp({ container }: BoothAppProps) {
       setPaletteId(framePalettes[0].id)
       setCameraSlots(ALL_CAMERA_SLOTS)
       setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
-      setFramePickerOrigin('capture')
       setScreen('camera')
     } catch (reason) {
       setFatalError(reason instanceof Error ? reason.message : 'Sesi tidak dapat dimulai.')
@@ -314,16 +265,6 @@ export function BoothApp({ container }: BoothAppProps) {
 
   const choosePalette = (palette: FramePalette) => setPaletteId(palette.id)
 
-  const continueFromFrames = () => {
-    if (!selectedFrame) return
-    persistSession((current) => ({
-      ...current,
-      frameId: selectedFrame.id,
-      status: 'reviewing',
-    }))
-    setScreen('review')
-  }
-
   const capturePhoto = (slot: number, capture: LivePhotoCapture) => {
     persistSession((current) => {
       const photos = [...current.photos]
@@ -335,14 +276,7 @@ export function BoothApp({ container }: BoothAppProps) {
   }
 
   const finishCapture = () => {
-    if (cameraSlots.length === 1) {
-      persistSession((current) => ({ ...current, status: 'reviewing' }))
-      setScreen('review')
-      return
-    }
-
     persistSession((current) => ({ ...current, status: 'selecting-frame' }))
-    setFramePickerOrigin('capture')
     setScreen('frames')
   }
 
@@ -358,11 +292,6 @@ export function BoothApp({ container }: BoothAppProps) {
     setPhotoTransforms((current) => current.map((item, index) => (
       index === slot ? transform : item
     )))
-  }
-
-  const changeFrame = () => {
-    setFramePickerOrigin('review')
-    setScreen('frames')
   }
 
   const finalize = async () => {
@@ -394,7 +323,7 @@ export function BoothApp({ container }: BoothAppProps) {
       const message = reason instanceof Error ? reason.message : 'Hasil foto gagal dibuat.'
       setFatalError(message)
       persistSession((current) => ({ ...current, status: 'failed' }))
-      setScreen('review')
+      setScreen('frames')
     }
   }
 
@@ -403,7 +332,6 @@ export function BoothApp({ container }: BoothAppProps) {
     setPaletteId(framePalettes[0].id)
     setCameraSlots(ALL_CAMERA_SLOTS)
     setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
-    setFramePickerOrigin('capture')
     setFatalError('')
     setScreen('idle')
   }
@@ -455,16 +383,16 @@ export function BoothApp({ container }: BoothAppProps) {
       <FramePicker
         frames={frames}
         photos={session?.photos ?? []}
+        livePhotos={session?.livePhotos ?? []}
+        transforms={photoTransforms}
         selectedId={selectedFrameId}
         paletteId={paletteId}
         onSelect={chooseFrame}
         onPaletteSelect={choosePalette}
-        onContinue={continueFromFrames}
+        onTransformChange={changePhotoTransform}
+        onRetake={retake}
+        onContinue={() => void finalize()}
         onBack={() => {
-          if (framePickerOrigin === 'review') {
-            setScreen('review')
-            return
-          }
           setCameraSlots(ALL_CAMERA_SLOTS)
           setScreen('camera')
         }}
@@ -477,11 +405,13 @@ export function BoothApp({ container }: BoothAppProps) {
       <CameraCapture
         slots={cameraSlots}
         totalSlots={TOTAL_PHOTOS}
+        photos={session?.photos ?? []}
+        startInReview={cameraSlots.length > 1 && session?.photos.length === TOTAL_PHOTOS}
         onCapture={capturePhoto}
         onComplete={finishCapture}
         onCancel={() => {
           if (cameraSlots.length === 1) {
-            setScreen('review')
+            setScreen('frames')
           } else if (session?.photos.length === TOTAL_PHOTOS) {
             setScreen('frames')
           } else {
@@ -489,24 +419,6 @@ export function BoothApp({ container }: BoothAppProps) {
           }
         }}
       />
-    )
-  }
-
-  if (screen === 'review' && session && selectedFrame) {
-    return (
-      <>
-        {fatalError && <div className="floating-error">{fatalError}<button type="button" onClick={() => setFatalError('')}>×</button></div>}
-        <ReviewPage
-          photos={session.photos}
-          livePhotos={session.livePhotos ?? []}
-          frame={selectedFrame}
-          onRetake={retake}
-          onChangeFrame={changeFrame}
-          transforms={photoTransforms}
-          onTransformChange={changePhotoTransform}
-          onFinish={() => void finalize()}
-        />
-      </>
     )
   }
 

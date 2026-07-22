@@ -1,19 +1,60 @@
 :root {
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #171711;
-  background: #f7f4ec;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --ink: #171711;
-  --paper: #fffaf0;
-  --cream: #f7f4ec;
-  --coral: #ff5a36;
-  --lime: #b8f43d;
-  --blue: #3974ff;
-  --yellow: #ffd23f;
-  --muted: #6d6b62;
-  --line: rgba(23, 23, 17, 0.14);
+
+  /* Tema aplikasi: ubah nilai di blok ini untuk mengganti warna seluruh UI. */
+  --theme-ink: #171711;
+  --theme-paper: #fffaf0;
+  --theme-background: #f7f4ec;
+  --theme-surface: #ffffff;
+  --theme-surface-muted: #f1eee6;
+  --theme-surface-glass: rgba(255, 255, 255, 0.58);
+  --theme-primary: #ff5a36;
+  --theme-primary-soft: #ffd8d0;
+  --theme-accent: #b8f43d;
+  --theme-info: #3974ff;
+  --theme-warning: #ffd23f;
+  --theme-success: #6fa61b;
+  --theme-success-text: #416400;
+  --theme-success-soft: #efffcf;
+  --theme-danger: #c5331c;
+  --theme-danger-text: #9b2612;
+  --theme-danger-soft: #fff0ec;
+  --theme-muted: #6d6b62;
+  --theme-line: rgba(23, 23, 17, 0.14);
+  --theme-line-strong: rgba(23, 23, 17, 0.28);
+  --theme-on-primary: #ffffff;
+  --theme-on-dark: #ffffff;
+  --theme-overlay: rgba(15, 15, 11, 0.62);
+  --theme-overlay-soft: rgba(15, 15, 11, 0.35);
+  --theme-shadow: rgba(23, 23, 17, 0.12);
+  --theme-primary-shadow: rgba(255, 90, 54, 0.2);
+  --theme-primary-ring: rgba(255, 90, 54, 0.14);
+  --theme-accent-glow: rgba(184, 244, 61, 0.32);
+  --theme-success-ring: rgba(111, 166, 27, 0.14);
+  --theme-focus-ring: rgba(57, 116, 255, 0.35);
+  --theme-radius-sm: 10px;
+  --theme-radius-md: 16px;
+  --theme-radius-lg: 24px;
+  --theme-shadow-sm: 0 4px 14px rgba(23, 23, 17, 0.08);
+  --theme-shadow-md: 0 12px 34px rgba(23, 23, 17, 0.1);
+  --theme-shadow-lg: 0 20px 56px rgba(23, 23, 17, 0.12);
+
+  /* Alias lama dipertahankan supaya modul yang ada tetap kompatibel. */
+  --ink: var(--theme-ink);
+  --paper: var(--theme-paper);
+  --cream: var(--theme-background);
+  --coral: var(--theme-primary);
+  --lime: var(--theme-accent);
+  --blue: var(--theme-info);
+  --yellow: var(--theme-warning);
+  --muted: var(--theme-muted);
+  --line: var(--theme-line);
+
+  color: var(--theme-ink);
+  background: var(--theme-background);
 }
 
 * {
@@ -53,7 +94,7 @@ button {
 button:focus-visible,
 input:focus-visible,
 a:focus-visible {
-  outline: 4px solid rgba(57, 116, 255, 0.35);
+  outline: 4px solid var(--theme-focus-ring);
   outline-offset: 3px;
 }
 
@@ -68,6 +109,6 @@ button:disabled {
 }
 
 ::selection {
-  color: #fff;
-  background: var(--coral);
+  color: var(--theme-on-primary);
+  background: var(--theme-primary);
 }

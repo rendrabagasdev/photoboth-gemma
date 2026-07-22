@@ -6,7 +6,7 @@ export type FramePalette = {
 }
 
 export const framePalettes: FramePalette[] = [
-  { id: 'coral', name: 'Coral', accent: '#ff654d', soft: '#ffe5db' },
+  { id: 'coral', name: 'Coral', accent: '#ff654d', soft: '#ffd8e2' },
   { id: 'amber', name: 'Amber', accent: '#f5aa22', soft: '#fff0c9' },
   { id: 'lemon', name: 'Lemon', accent: '#e4d72e', soft: '#fffbd2' },
   { id: 'lime', name: 'Lime', accent: '#9bcf27', soft: '#efffc9' },

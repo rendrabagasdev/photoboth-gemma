@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && tsc -p tsconfig.api.json && vite build && npm run build:worker",
-    "build:worker": "esbuild worker/index.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/server/index.js && node scripts/stage-hosting.mjs",
+    "build": "tsc -b && tsc -p tsconfig.api.json && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -27,7 +26,6 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
-    "esbuild": "^0.28.1",
     "eslint": "^10.6.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
