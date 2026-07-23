@@ -1,4 +1,4 @@
-import type { PhotoLayoutId } from '../../frames/domain/photo-frame'
+import type { PhotoFrame, PhotoLayoutId } from '../../frames/domain/photo-frame'
 
 // One photobooth strip: half of a 4R portrait sheet at 300 DPI.
 export const TEMPLATE_WIDTH = 600
@@ -19,6 +19,7 @@ export type TemplateSlot = {
   width: number
   height: number
   rotation?: number
+  borderRadius?: number
 }
 
 export type TemplateLayout = {
@@ -47,9 +48,9 @@ export const templateLayoutOptions: TemplateLayout[] = [
     id: 'full',
     name: 'Frame 4',
     slots: [
-      { x: 0, y: 27, width: 600, height: 450 },
-      { x: 0, y: 496, width: 600, height: 450 },
-      { x: 0, y: 965, width: 600, height: 450 },
+      { x: 100, y: 30, width: 400, height: 500 },
+      { x: 100, y: 550, width: 400, height: 500 },
+      { x: 100, y: 1070, width: 400, height: 500 },
     ],
     brand: { x: 300, y: 1620, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
     copyright: copyright(1680),
@@ -58,9 +59,9 @@ export const templateLayoutOptions: TemplateLayout[] = [
     id: 'lower',
     name: 'Frame 5',
     slots: [
-      { x: 0, y: 378, width: 600, height: 450 },
-      { x: 0, y: 849, width: 600, height: 450 },
-      { x: 0, y: 1320, width: 600, height: 450 },
+      { x: 132, y: 320, width: 384, height: 480 },
+      { x: 42, y: 810, width: 384, height: 480 },
+      { x: 132, y: 1300, width: 384, height: 480 },
     ],
     brand: { x: 300, y: 165, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
     copyright: copyright(225),
@@ -69,9 +70,9 @@ export const templateLayoutOptions: TemplateLayout[] = [
     id: 'editorial',
     name: 'Frame 6',
     slots: [
-      { x: 0, y: 27, width: 600, height: 450 },
-      { x: 0, y: 519, width: 516, height: 387 },
-      { x: 84, y: 948, width: 516, height: 387 },
+      { x: 0, y: 30, width: 360, height: 450 },
+      { x: 120, y: 500, width: 360, height: 450 },
+      { x: 240, y: 970, width: 360, height: 450 },
     ],
     brand: { x: 300, y: 1530, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
     copyright: copyright(1590),
@@ -80,9 +81,9 @@ export const templateLayoutOptions: TemplateLayout[] = [
     id: 'inset',
     name: 'Frame 7',
     slots: [
-      { x: 48, y: 143, width: 504, height: 378 },
-      { x: 48, y: 612, width: 504, height: 378 },
-      { x: 48, y: 1081, width: 504, height: 378 },
+      { x: 100, y: 60, width: 400, height: 500 },
+      { x: 100, y: 580, width: 400, height: 500 },
+      { x: 100, y: 1100, width: 400, height: 500 },
     ],
     brand: { x: 300, y: 1640, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
     copyright: copyright(1700),
@@ -91,9 +92,9 @@ export const templateLayoutOptions: TemplateLayout[] = [
     id: 'staggered',
     name: 'Frame 8',
     slots: [
-      { x: 0, y: 90, width: 519, height: 389 },
-      { x: 81, y: 538, width: 519, height: 389 },
-      { x: 0, y: 986, width: 519, height: 389 },
+      { x: 0, y: 50, width: 360, height: 450 },
+      { x: 240, y: 520, width: 360, height: 450 },
+      { x: 0, y: 990, width: 360, height: 450 },
     ],
     brand: { x: 300, y: 1570, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
     copyright: copyright(1630),
@@ -102,12 +103,22 @@ export const templateLayoutOptions: TemplateLayout[] = [
     id: 'tilted',
     name: 'Frame 9',
     slots: [
-      { x: 15, y: 119, width: 450, height: 338, rotation: -6.03 },
-      { x: 100, y: 634, width: 450, height: 338, rotation: 9.37 },
-      { x: 61, y: 1137, width: 450, height: 338, rotation: -3 },
+      { x: 45, y: 80, width: 360, height: 450, rotation: -6.03 },
+      { x: 195, y: 600, width: 360, height: 450, rotation: 7.5 },
+      { x: 70, y: 1120, width: 360, height: 450, rotation: -3 },
     ],
     brand: { x: 300, y: 1650, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
     copyright: copyright(1710),
+  },
+  {
+    id: 'double',
+    name: '2 Foto',
+    slots: [
+      { x: 80, y: 70, width: 440, height: 550 },
+      { x: 80, y: 970, width: 440, height: 550 },
+    ],
+    brand: { x: 300, y: 1680, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
+    copyright: copyright(1735),
   },
 ]
 
@@ -121,6 +132,10 @@ export function resolveTemplateLayout(layoutId?: PhotoLayoutId): TemplateLayout 
 
 export function resolveTemplateSlots(layoutId?: PhotoLayoutId): TemplateSlot[] {
   return resolveTemplateLayout(layoutId).slots
+}
+
+export function resolveFrameSlots(frame: Pick<PhotoFrame, 'customSlots' | 'layoutId'>): TemplateSlot[] {
+  return frame.customSlots?.length ? frame.customSlots : resolveTemplateSlots(frame.layoutId)
 }
 
 export const defaultPhotoTransforms: PhotoTransform[] = templateSlots.map(() => ({

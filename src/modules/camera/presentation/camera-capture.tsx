@@ -57,8 +57,8 @@ export function CameraCapture({
     const video = webcamRef.current?.video
     if (!video?.videoWidth || !video.videoHeight) return null
 
-    const outputWidth = 1600
-    const outputHeight = 1200
+    const outputWidth = 1200
+    const outputHeight = 1500
     const sourceAspect = video.videoWidth / video.videoHeight
     const targetAspect = outputWidth / outputHeight
     let sourceWidth = video.videoWidth
@@ -246,7 +246,7 @@ export function CameraCapture({
               mirrored
               screenshotFormat="image/jpeg"
               screenshotQuality={0.92}
-              videoConstraints={{ facingMode: 'user', width: 1600, height: 1200, aspectRatio: 4 / 3 }}
+              videoConstraints={{ facingMode: 'user', width: 1200, height: 1500, aspectRatio: 4 / 5 }}
               onUserMedia={(stream) => {
                 streamRef.current = stream
                 setCameraState('ready')

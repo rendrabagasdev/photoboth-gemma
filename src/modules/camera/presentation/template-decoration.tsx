@@ -3,6 +3,8 @@ import { getFrameDecorationShapes } from '../../frames/domain/frame-decoration'
 import type { PhotoFrame } from '../../frames/domain/photo-frame'
 
 export function TemplateDecoration({ frame }: { frame: PhotoFrame }) {
+  if (frame.kind === 'uploaded') return null
+
   const shapes = getFrameDecorationShapes(frame)
   const layout = resolveTemplateLayout(frame.layoutId)
 

@@ -7,13 +7,14 @@ import {
   clampPhotoTransform,
   defaultPhotoTransforms,
   resolveTemplateLayout,
-  resolveTemplateSlots,
+  resolveFrameSlots,
   type PhotoTransform,
 } from '../domain/template-layout'
 import { drawFrameDecorations } from './draw-frame-decoration'
+import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
 
 const OUTPUT_SCALE = 0.5
-const LIVE_DURATION_MS = 3_000
+const LIVE_DURATION_MS = 4_000
 
 function loadImage(source: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -55,7 +56,7 @@ export async function composeLiveTemplate(
   transforms: PhotoTransform[] = defaultPhotoTransforms,
 ): Promise<Blob> {
   const layout = resolveTemplateLayout(frame.layoutId)
-  const slots = resolveTemplateSlots(frame.layoutId)
+  const slots = resolveFrameSlots(frame)
   const fallback = livePhotos.find((clip) => clip?.videoBlob.size)?.videoBlob
   if (!fallback) throw new Error('Live Photo belum tersedia.')
 
@@ -95,6 +96,7 @@ export async function composeLiveTemplate(
         width: sourceSlot.width * OUTPUT_SCALE,
         height: sourceSlot.height * OUTPUT_SCALE,
         rotation: sourceSlot.rotation ?? 0,
+        borderRadius: (sourceSlot.borderRadius ?? 0) * OUTPUT_SCALE,
       }
       const media = videoEntries[index]?.video ?? images[index]
       const transform = clampPhotoTransform(transforms[index] ?? defaultPhotoTransforms[index])
@@ -115,8 +117,14 @@ export async function composeLiveTemplate(
       context.save()
       context.translate(slot.x + slot.width / 2, slot.y + slot.height / 2)
       context.rotate((slot.rotation * Math.PI) / 180)
-      context.beginPath()
-      context.rect(-slot.width / 2, -slot.height / 2, slot.width, slot.height)
+      roundedRectPath(
+        context,
+        -slot.width / 2,
+        -slot.height / 2,
+        slot.width,
+        slot.height,
+        slot.borderRadius,
+      )
       context.clip()
       if (media instanceof HTMLVideoElement) {
         context.scale(-1, 1)
@@ -137,23 +145,25 @@ export async function composeLiveTemplate(
       )
     }
 
-    drawFrameDecorations(context, frame, OUTPUT_SCALE, offsetX)
+    if (frame.kind === 'preset') {
+      drawFrameDecorations(context, frame, OUTPUT_SCALE, offsetX)
 
-    context.fillStyle = '#171711'
-    context.font = `900 ${layout.brand.fontSize * OUTPUT_SCALE}px Arial, sans-serif`
-    context.textAlign = 'center'
-    context.fillText(
-      layout.brand.text,
-      offsetX + layout.brand.x * OUTPUT_SCALE,
-      layout.brand.y * OUTPUT_SCALE,
-    )
-    context.font = `500 ${layout.copyright.fontSize * OUTPUT_SCALE}px Arial, sans-serif`
-    context.textAlign = 'right'
-    context.fillText(
-      layout.copyright.text,
-      offsetX + layout.copyright.x * OUTPUT_SCALE,
-      layout.copyright.y * OUTPUT_SCALE,
-    )
+      context.fillStyle = '#171711'
+      context.font = `900 ${layout.brand.fontSize * OUTPUT_SCALE}px Arial, sans-serif`
+      context.textAlign = 'center'
+      context.fillText(
+        layout.brand.text,
+        offsetX + layout.brand.x * OUTPUT_SCALE,
+        layout.brand.y * OUTPUT_SCALE,
+      )
+      context.font = `500 ${layout.copyright.fontSize * OUTPUT_SCALE}px Arial, sans-serif`
+      context.textAlign = 'right'
+      context.fillText(
+        layout.copyright.text,
+        offsetX + layout.copyright.x * OUTPUT_SCALE,
+        layout.copyright.y * OUTPUT_SCALE,
+      )
+    }
   }
 
   const draw = () => {

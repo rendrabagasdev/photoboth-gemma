@@ -1,19 +1,18 @@
 import type { PhotoFrame } from '../domain/photo-frame'
-import { framePalettes, type FramePalette } from '../domain/frame-palette'
 import { FramePreview } from './frame-preview'
 import { PhotoTemplateEditor } from '../../camera/presentation/photo-template-editor'
 import type { PhotoTransform } from '../../camera/domain/template-layout'
 import type { LivePhotoClip } from '../../sessions/domain/booth-session'
+import { resolveFrameSlots } from '../../camera/domain/template-layout'
 
 type FramePickerProps = {
+  mode: 'select' | 'edit'
   frames: PhotoFrame[]
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>
   transforms: PhotoTransform[]
   selectedId: string | null
-  paletteId: string
   onSelect: (frame: PhotoFrame) => void
-  onPaletteSelect: (palette: FramePalette) => void
   onTransformChange: (slot: number, transform: PhotoTransform) => void
   onRetake: (slot: number) => void
   onContinue: () => void
@@ -21,26 +20,19 @@ type FramePickerProps = {
 }
 
 export function FramePicker({
+  mode,
   frames,
   photos,
   livePhotos,
   transforms,
   selectedId,
-  paletteId,
   onSelect,
-  onPaletteSelect,
   onTransformChange,
   onRetake,
   onContinue,
   onBack,
 }: FramePickerProps) {
-  const palette = framePalettes.find((item) => item.id === paletteId) ?? framePalettes[0]
   const selectedFrame = frames.find((frame) => frame.id === selectedId) ?? frames[0]
-  const applyPalette = (frame: PhotoFrame): PhotoFrame => ({
-    ...frame,
-    accent: palette.accent,
-    accentSoft: palette.soft,
-  })
 
   return (
     <main className="flow-page frame-picker-page">
@@ -49,16 +41,22 @@ export function FramePicker({
           ←
         </button>
         <span />
-        <span className="step-count">02 / 02</span>
+        <span className="step-count">{mode === 'select' ? '01 / 03' : '03 / 03'}</span>
       </header>
 
-      <section className="frame-picker-pattern">
+      <section className={`frame-picker-pattern ${mode === 'edit' ? 'review-only' : ''}`}>
         <div className="frame-large-preview" aria-label="Atur foto dan preview frame">
-          {selectedFrame && (
+          {selectedFrame && mode === 'select' && (
+            <FramePreview
+              frame={selectedFrame}
+              selected
+            />
+          )}
+          {selectedFrame && mode === 'edit' && (
             <PhotoTemplateEditor
               photos={photos}
               livePhotos={livePhotos}
-              frame={applyPalette(selectedFrame)}
+              frame={selectedFrame}
               transforms={transforms}
               onTransformChange={onTransformChange}
               onRetake={onRetake}
@@ -66,24 +64,7 @@ export function FramePicker({
           )}
         </div>
 
-        <div className="frame-picker-panel">
-          <section className="palette-section" aria-labelledby="palette-title">
-            <h1 id="palette-title">Color Palette</h1>
-            <div className="palette-grid">
-              {framePalettes.map((item) => (
-                <button
-                  key={item.id}
-                  className={`palette-swatch ${palette.id === item.id ? 'selected' : ''}`}
-                  type="button"
-                  style={{ '--swatch': item.accent } as React.CSSProperties}
-                  onClick={() => onPaletteSelect(item)}
-                  aria-label={item.name}
-                  aria-pressed={palette.id === item.id}
-                />
-              ))}
-            </div>
-          </section>
-
+        {mode === 'select' && <div className="frame-picker-panel">
           <section className="template-section" aria-labelledby="template-title">
             <h2 id="template-title">Pilih Frame</h2>
             <div className="template-grid" aria-label="Daftar frame">
@@ -98,13 +79,14 @@ export function FramePicker({
                     aria-pressed={selected}
                     aria-label={frame.name}
                   >
-                    <FramePreview frame={applyPalette(frame)} compact photos={photos} />
+                    <FramePreview frame={frame} compact photos={photos} />
+                    <span className="template-photo-count">{resolveFrameSlots(frame).length}×</span>
                   </button>
                 )
               })}
             </div>
           </section>
-        </div>
+        </div>}
       </section>
 
       <footer className="sticky-action-bar frame-picker-actions">
@@ -112,7 +94,7 @@ export function FramePicker({
           className="primary-button frame-continue-button"
           type="button"
           onClick={onContinue}
-          disabled={!selectedId}
+          disabled={!selectedId || (mode === 'edit' && photos.length === 0)}
           aria-label="Lanjut"
         >
           →

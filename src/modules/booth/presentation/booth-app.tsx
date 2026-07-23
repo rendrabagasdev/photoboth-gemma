@@ -6,12 +6,12 @@ import { composePrintPdf } from '../../camera/application/compose-print-pdf'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import {
   defaultPhotoTransforms,
+  resolveFrameSlots,
   type PhotoTransform,
 } from '../../camera/domain/template-layout'
 import type { FrameService } from '../../frames/application/frame-service'
 import type { PhotoFrame } from '../../frames/domain/photo-frame'
 import { FramePicker } from '../../frames/presentation/frame-picker'
-import { framePalettes, type FramePalette } from '../../frames/domain/frame-palette'
 import type { SessionService } from '../../sessions/application/session-service'
 import type { BoothSession } from '../../sessions/domain/booth-session'
 import type { LivePhotoCapture } from '../../camera/application/capture-live-photo'
@@ -27,6 +27,7 @@ type BoothScreen =
   | 'idle'
   | 'frames'
   | 'camera'
+  | 'review'
   | 'processing'
   | 'result'
   | 'operator-lock'
@@ -41,9 +42,6 @@ type BoothAppProps = {
     shareService: ShareService
   }
 }
-
-const TOTAL_PHOTOS = 3
-const ALL_CAMERA_SLOTS = [0, 1, 2]
 
 function readThemeColor(variable: string, fallback: string) {
   const value = window.getComputedStyle(document.documentElement).getPropertyValue(variable).trim()
@@ -216,18 +214,22 @@ export function BoothApp({ container }: BoothAppProps) {
   const [frames, setFrames] = useState<PhotoFrame[]>([])
   const [session, setSession] = useState<BoothSession>()
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null)
-  const [paletteId, setPaletteId] = useState(framePalettes[0].id)
-  const [cameraSlots, setCameraSlots] = useState<number[]>(ALL_CAMERA_SLOTS)
+  const [cameraSlots, setCameraSlots] = useState<number[]>([])
   const [photoTransforms, setPhotoTransforms] = useState<PhotoTransform[]>(
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
   )
   const [fatalError, setFatalError] = useState('')
 
   const selectedFrame = useMemo(() => {
-    const frame = frames.find((item) => item.id === selectedFrameId) ?? frames[0]
-    const palette = framePalettes.find((item) => item.id === paletteId) ?? framePalettes[0]
-    return frame ? { ...frame, accent: palette.accent, accentSoft: palette.soft } : undefined
-  }, [frames, paletteId, selectedFrameId])
+    return frames.find((item) => item.id === selectedFrameId) ?? frames[0]
+  }, [frames, selectedFrameId])
+  const requiredPhotoCount = selectedFrame
+    ? resolveFrameSlots(selectedFrame).length
+    : 0
+  const allCameraSlots = useMemo(
+    () => Array.from({ length: requiredPhotoCount }, (_, index) => index),
+    [requiredPhotoCount],
+  )
 
   const loadFrames = async () => {
     await container.frameService.initialize()
@@ -272,13 +274,12 @@ export function BoothApp({ container }: BoothAppProps) {
   const startSession = async () => {
     try {
       const nextSession = await container.sessionService.start()
-      const capturingSession: BoothSession = { ...nextSession, status: 'capturing' }
-      await container.sessionService.save(capturingSession)
-      setSession(capturingSession)
-      setPaletteId(framePalettes[0].id)
-      setCameraSlots(ALL_CAMERA_SLOTS)
+      const selectingSession: BoothSession = { ...nextSession, status: 'selecting-frame' }
+      await container.sessionService.save(selectingSession)
+      setSession(selectingSession)
+      setCameraSlots([])
       setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
-      setScreen('camera')
+      setScreen('frames')
     } catch (reason) {
       setFatalError(reason instanceof Error ? reason.message : 'Sesi tidak dapat dimulai.')
     }
@@ -286,10 +287,12 @@ export function BoothApp({ container }: BoothAppProps) {
 
   const chooseFrame = (frame: PhotoFrame) => {
     setSelectedFrameId(frame.id)
+    const slotCount = resolveFrameSlots(frame).length
+    setPhotoTransforms(Array.from({ length: slotCount }, (_, index) => ({
+      ...(defaultPhotoTransforms[index] ?? defaultPhotoTransforms[0]),
+    })))
     persistSession((current) => ({ ...current, frameId: frame.id }))
   }
-
-  const choosePalette = (palette: FramePalette) => setPaletteId(palette.id)
 
   const capturePhoto = (slot: number, capture: LivePhotoCapture) => {
     persistSession((current) => {
@@ -301,15 +304,35 @@ export function BoothApp({ container }: BoothAppProps) {
     })
   }
 
+  const beginCapture = async () => {
+    if (!session || !selectedFrame || allCameraSlots.length === 0) return
+    const capturingSession: BoothSession = {
+      ...session,
+      frameId: selectedFrame.id,
+      photos: [],
+      livePhotos: [],
+      status: 'capturing',
+    }
+    await container.sessionService.save(capturingSession)
+    setSession(capturingSession)
+    setCameraSlots(allCameraSlots)
+    setPhotoTransforms(Array.from({ length: allCameraSlots.length }, (_, index) => ({
+      ...(defaultPhotoTransforms[index] ?? defaultPhotoTransforms[0]),
+    })))
+    setScreen('camera')
+  }
+
   const finishCapture = () => {
-    persistSession((current) => ({ ...current, status: 'selecting-frame' }))
-    setScreen('frames')
+    persistSession((current) => ({ ...current, status: 'reviewing' }))
+    setScreen('review')
   }
 
   const retake = (slot: number) => {
     setCameraSlots([slot])
     setPhotoTransforms((current) => current.map((transform, index) => (
-      index === slot ? { ...defaultPhotoTransforms[slot] } : transform
+      index === slot
+        ? { ...(defaultPhotoTransforms[slot] ?? defaultPhotoTransforms[0]) }
+        : transform
     )))
     setScreen('camera')
   }
@@ -321,7 +344,11 @@ export function BoothApp({ container }: BoothAppProps) {
   }
 
   const finalize = async () => {
-    if (!session || !selectedFrame || session.photos.length !== TOTAL_PHOTOS) return
+    const photosComplete = session && Array.from(
+      { length: requiredPhotoCount },
+      (_, index) => Boolean(session.photos[index]),
+    ).every(Boolean)
+    if (!session || !selectedFrame || !photosComplete) return
     setScreen('processing')
     persistSession((current) => ({ ...current, status: 'processing' }))
     try {
@@ -349,14 +376,13 @@ export function BoothApp({ container }: BoothAppProps) {
       const message = reason instanceof Error ? reason.message : 'Hasil foto gagal dibuat.'
       setFatalError(message)
       persistSession((current) => ({ ...current, status: 'failed' }))
-      setScreen('frames')
+      setScreen('review')
     }
   }
 
   const reset = () => {
     setSession(undefined)
-    setPaletteId(framePalettes[0].id)
-    setCameraSlots(ALL_CAMERA_SLOTS)
+    setCameraSlots([])
     setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
     setFatalError('')
     setScreen('idle')
@@ -407,19 +433,36 @@ export function BoothApp({ container }: BoothAppProps) {
   if (screen === 'frames') {
     return (
       <FramePicker
+        mode="select"
         frames={frames}
+        photos={[]}
+        livePhotos={[]}
+        transforms={photoTransforms}
+        selectedId={selectedFrameId}
+        onSelect={chooseFrame}
+        onTransformChange={changePhotoTransform}
+        onRetake={retake}
+        onContinue={() => void beginCapture()}
+        onBack={reset}
+      />
+    )
+  }
+
+  if (screen === 'review' && selectedFrame) {
+    return (
+      <FramePicker
+        mode="edit"
+        frames={[selectedFrame]}
         photos={session?.photos ?? []}
         livePhotos={session?.livePhotos ?? []}
         transforms={photoTransforms}
-        selectedId={selectedFrameId}
-        paletteId={paletteId}
-        onSelect={chooseFrame}
-        onPaletteSelect={choosePalette}
+        selectedId={selectedFrame.id}
+        onSelect={() => undefined}
         onTransformChange={changePhotoTransform}
         onRetake={retake}
         onContinue={() => void finalize()}
         onBack={() => {
-          setCameraSlots(ALL_CAMERA_SLOTS)
+          setCameraSlots(allCameraSlots)
           setScreen('camera')
         }}
       />
@@ -430,18 +473,18 @@ export function BoothApp({ container }: BoothAppProps) {
     return (
       <CameraCapture
         slots={cameraSlots}
-        totalSlots={TOTAL_PHOTOS}
+        totalSlots={requiredPhotoCount}
         photos={session?.photos ?? []}
-        startInReview={cameraSlots.length > 1 && session?.photos.length === TOTAL_PHOTOS}
+        startInReview={cameraSlots.length > 1 && session?.photos.length === requiredPhotoCount}
         onCapture={capturePhoto}
         onComplete={finishCapture}
         onCancel={() => {
           if (cameraSlots.length === 1) {
-            setScreen('frames')
-          } else if (session?.photos.length === TOTAL_PHOTOS) {
-            setScreen('frames')
+            setScreen('review')
+          } else if (session?.photos.length === requiredPhotoCount) {
+            setScreen('review')
           } else {
-            reset()
+            setScreen('frames')
           }
         }}
       />

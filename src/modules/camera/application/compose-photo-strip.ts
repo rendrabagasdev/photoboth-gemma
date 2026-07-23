@@ -5,11 +5,12 @@ import {
   clampPhotoTransform,
   defaultPhotoTransforms,
   resolveTemplateLayout,
-  resolveTemplateSlots,
+  resolveFrameSlots,
   type PhotoTransform,
   type TemplateSlot,
 } from '../domain/template-layout'
 import { drawFrameDecorations } from './draw-frame-decoration'
+import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
 
 function loadImage(source: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -46,8 +47,14 @@ function drawPositionedPhoto(
   context.save()
   context.translate(slot.x + slot.width / 2, slot.y + slot.height / 2)
   context.rotate(((slot.rotation ?? 0) * Math.PI) / 180)
-  context.beginPath()
-  context.rect(-slot.width / 2, -slot.height / 2, slot.width, slot.height)
+  roundedRectPath(
+    context,
+    -slot.width / 2,
+    -slot.height / 2,
+    slot.width,
+    slot.height,
+    slot.borderRadius,
+  )
   context.clip()
   context.drawImage(image, offsetX - width / 2, offsetY - height / 2, width, height)
   context.restore()
@@ -59,9 +66,9 @@ export async function composePhotoStrip(
   transforms: PhotoTransform[] = defaultPhotoTransforms,
 ): Promise<Blob> {
   const layout = resolveTemplateLayout(frame.layoutId)
-  const slots = resolveTemplateSlots(frame.layoutId)
+  const slots = resolveFrameSlots(frame)
   if (photos.length !== slots.length) {
-    throw new Error('Tiga foto diperlukan untuk membuat hasil akhir.')
+    throw new Error(`${slots.length} foto diperlukan untuk membuat hasil akhir.`)
   }
 
   const canvas = document.createElement('canvas')
@@ -93,19 +100,21 @@ export async function composePhotoStrip(
     }
   }
 
-  drawFrameDecorations(context, frame)
+  if (frame.kind === 'preset') {
+    drawFrameDecorations(context, frame)
 
-  context.fillStyle = '#171711'
-  context.font = `900 ${layout.brand.fontSize}px Arial, sans-serif`
-  context.textAlign = 'center'
-  context.fillText(layout.brand.text, layout.brand.x, layout.brand.y)
-  context.font = `500 ${layout.copyright.fontSize}px Arial, sans-serif`
-  context.textAlign = 'right'
-  context.fillText(
-    layout.copyright.text,
-    layout.copyright.x,
-    layout.copyright.y,
-  )
+    context.fillStyle = '#171711'
+    context.font = `900 ${layout.brand.fontSize}px Arial, sans-serif`
+    context.textAlign = 'center'
+    context.fillText(layout.brand.text, layout.brand.x, layout.brand.y)
+    context.font = `500 ${layout.copyright.fontSize}px Arial, sans-serif`
+    context.textAlign = 'right'
+    context.fillText(
+      layout.copyright.text,
+      layout.copyright.x,
+      layout.copyright.y,
+    )
+  }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

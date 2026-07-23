@@ -24,6 +24,13 @@ export class DexieFrameRepository implements FrameRepository {
   async seed(frames: PhotoFrame[]): Promise<void> {
     const existingFrames = await this.database.frames.toArray()
     const existingById = new Map(existingFrames.map((frame) => [frame.id, frame]))
+    const presetIds = new Set(frames.map((frame) => frame.id))
+    const hasSurvivingDefault = existingFrames.some((frame) => (
+      frame.isDefault && (frame.kind === 'uploaded' || presetIds.has(frame.id))
+    ))
+    const stalePresetIds = existingFrames
+      .filter((frame) => frame.kind === 'preset' && !presetIds.has(frame.id))
+      .map((frame) => frame.id)
     const presetFrames = frames.map((frame) => {
       const existing = existingById.get(frame.id)
       if (!existing) return frame
@@ -33,9 +40,13 @@ export class DexieFrameRepository implements FrameRepository {
         kind: 'preset' as const,
         presetStyle: frame.presetStyle,
         layoutId: frame.layoutId,
+        isDefault: existing.isDefault || (!hasSurvivingDefault && frame.isDefault),
         sortOrder: frame.sortOrder,
       }
     })
-    await this.database.frames.bulkPut(presetFrames)
+    await this.database.transaction('rw', this.database.frames, async () => {
+      if (stalePresetIds.length) await this.database.frames.bulkDelete(stalePresetIds)
+      await this.database.frames.bulkPut(presetFrames)
+    })
   }
 }

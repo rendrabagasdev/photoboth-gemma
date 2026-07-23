@@ -1,11 +1,53 @@
 import type { FrameRepository } from './frame-repository'
-import { defaultFrames, type PhotoFrame, type PhotoLayoutId } from '../domain/photo-frame'
+import { defaultFrames, type FramePhotoSlot, type PhotoFrame } from '../domain/photo-frame'
+import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
+
+const FRAME_WIDTH = 600
+const FRAME_HEIGHT = 1800
+
+function createFrameOverlay(
+  bitmap: ImageBitmap,
+  slots: FramePhotoSlot[],
+): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = FRAME_WIDTH
+  canvas.height = FRAME_HEIGHT
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Perangkat tidak mendukung editor frame.')
+
+  context.drawImage(bitmap, 0, 0, FRAME_WIDTH, FRAME_HEIGHT)
+  context.globalCompositeOperation = 'destination-out'
+  context.fillStyle = '#000000'
+  slots.forEach((slot) => {
+    context.save()
+    context.translate(slot.x + slot.width / 2, slot.y + slot.height / 2)
+    context.rotate(((slot.rotation ?? 0) * Math.PI) / 180)
+    roundedRectPath(
+      context,
+      -slot.width / 2,
+      -slot.height / 2,
+      slot.width,
+      slot.height,
+      slot.borderRadius,
+    )
+    context.fill()
+    context.restore()
+  })
+  context.globalCompositeOperation = 'source-over'
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error('Frame gagal diproses.')),
+      'image/png',
+    )
+  })
+}
 
 export type AddFrameInput = {
   name: string
   imageBlob: Blob
   isActive: boolean
-  layoutId: PhotoLayoutId
+  customSlots: FramePhotoSlot[]
 }
 
 export class FrameService {
@@ -35,21 +77,41 @@ export class FrameService {
     }
 
     if (input.imageBlob.type !== 'image/png') {
-      throw new Error('Frame harus berupa file PNG transparan.')
+      throw new Error('Frame harus berupa file PNG.')
     }
 
     if (input.imageBlob.size > 10 * 1024 * 1024) {
       throw new Error('Ukuran frame maksimal 10 MB.')
     }
 
-    const bitmap = await createImageBitmap(input.imageBlob)
-    const width = bitmap.width
-    const height = bitmap.height
-    const ratio = bitmap.width / bitmap.height
-    bitmap.close()
+    if (input.customSlots.length < 1 || input.customSlots.length > 6) {
+      throw new Error('Tambahkan 1 sampai 6 area foto pada frame.')
+    }
 
-    if (width !== 600 || height !== 1800 || Math.abs(ratio - 1 / 3) > 0.01) {
-      throw new Error('Template strip harus berukuran 600 × 1800 px.')
+    const slotsValid = input.customSlots.every((slot) => (
+      Number.isFinite(slot.x)
+      && Number.isFinite(slot.y)
+      && Number.isFinite(slot.width)
+      && Number.isFinite(slot.height)
+      && slot.x >= 0
+      && slot.y >= 0
+      && slot.width >= 120
+      && slot.height >= 90
+      && slot.x + slot.width <= 600
+      && slot.y + slot.height <= 1800
+      && (slot.borderRadius ?? 0) >= 0
+      && (slot.borderRadius ?? 0) <= Math.min(slot.width, slot.height) / 2
+    ))
+    if (!slotsValid) {
+      throw new Error('Area foto harus berada di dalam kanvas frame.')
+    }
+
+    const bitmap = await createImageBitmap(input.imageBlob)
+    let imageBlob: Blob
+    try {
+      imageBlob = await createFrameOverlay(bitmap, input.customSlots)
+    } finally {
+      bitmap.close()
     }
 
     const frames = await this.list()
@@ -67,11 +129,12 @@ export class FrameService {
       name: input.name.trim(),
       description: 'Frame buatan operator.',
       kind: 'uploaded',
-      layoutId: input.layoutId,
+      layoutId: 'full',
+      customSlots: input.customSlots.map((slot) => ({ ...slot })),
       orientation: 'portrait',
       accent: '#ff5a36',
       accentSoft: '#ffe5db',
-      imageBlob: input.imageBlob,
+      imageBlob,
       isActive: input.isActive,
       isDefault: frames.length === 0,
       sortOrder: frames.length,

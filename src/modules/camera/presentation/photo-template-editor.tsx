@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PhotoFrame } from '../../frames/domain/photo-frame'
 import type { LivePhotoClip } from '../../sessions/domain/booth-session'
 import { useObjectUrl } from '../../../shared/presentation/use-object-url'
@@ -6,7 +6,7 @@ import {
   TEMPLATE_HEIGHT,
   TEMPLATE_WIDTH,
   clampPhotoTransform,
-  resolveTemplateSlots,
+  resolveFrameSlots,
   type PhotoTransform,
 } from '../domain/template-layout'
 import { TemplateDecoration } from './template-decoration'
@@ -28,6 +28,50 @@ type DragState = {
   origin: PhotoTransform
 }
 
+function LivePhotoLayer({
+  clip,
+  index,
+  playing,
+  mediaStyle,
+  onToggle,
+  onEnded,
+}: {
+  clip?: LivePhotoClip
+  index: number
+  playing: boolean
+  mediaStyle: CSSProperties
+  onToggle: () => void
+  onEnded: () => void
+}) {
+  const liveUrl = useObjectUrl(clip?.videoBlob)
+  if (!liveUrl) return null
+
+  return (
+    <>
+      {playing && (
+        <video
+          className="live-photo-video"
+          src={liveUrl}
+          autoPlay
+          muted
+          playsInline
+          onEnded={onEnded}
+          style={mediaStyle}
+        />
+      )}
+      <button
+        className="editor-live"
+        type="button"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={onToggle}
+        aria-label={`Putar Live Photo ${index + 1}`}
+      >
+        ●
+      </button>
+    </>
+  )
+}
+
 export function PhotoTemplateEditor({
   photos,
   livePhotos,
@@ -40,11 +84,7 @@ export function PhotoTemplateEditor({
   const [activeSlot, setActiveSlot] = useState(0)
   const [playingSlot, setPlayingSlot] = useState<number>()
   const overlayUrl = useObjectUrl(frame.imageBlob)
-  const liveUrlOne = useObjectUrl(livePhotos[0]?.videoBlob)
-  const liveUrlTwo = useObjectUrl(livePhotos[1]?.videoBlob)
-  const liveUrlThree = useObjectUrl(livePhotos[2]?.videoBlob)
-  const liveUrls = [liveUrlOne, liveUrlTwo, liveUrlThree]
-  const slots = resolveTemplateSlots(frame.layoutId)
+  const slots = resolveFrameSlots(frame)
 
   const beginDrag = (slot: number, event: ReactPointerEvent<HTMLDivElement>) => {
     const transform = transforms[slot]
@@ -107,8 +147,13 @@ export function PhotoTemplateEditor({
         {slots.map((slot, index) => {
           const transform = transforms[index]
           const photo = photos[index]
-          const liveUrl = liveUrls[index]
           if (!transform || !photo) return null
+          const mediaStyle = {
+            width: `${transform.scale * 100}%`,
+            height: `${transform.scale * 100}%`,
+            left: `${50 + transform.offsetX * 100}%`,
+            top: `${50 + transform.offsetY * 100}%`,
+          }
 
           return (
             <div
@@ -119,6 +164,7 @@ export function PhotoTemplateEditor({
                 top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
                 width: `${(slot.width / TEMPLATE_WIDTH) * 100}%`,
                 height: `${(slot.height / TEMPLATE_HEIGHT) * 100}%`,
+                borderRadius: `${((slot.borderRadius ?? 0) / slot.width) * 100}% / ${((slot.borderRadius ?? 0) / slot.height) * 100}%`,
                 transform: `rotate(${slot.rotation ?? 0}deg)`,
               }}
               onPointerDown={(event) => beginDrag(index, event)}
@@ -132,40 +178,16 @@ export function PhotoTemplateEditor({
                 src={photo}
                 alt={`Foto ${index + 1}`}
                 draggable={false}
-                style={{
-                  width: `${transform.scale * 100}%`,
-                  height: `${transform.scale * 100}%`,
-                  left: `${50 + transform.offsetX * 100}%`,
-                  top: `${50 + transform.offsetY * 100}%`,
-                }}
+                style={mediaStyle}
               />
-              {playingSlot === index && liveUrl && (
-                <video
-                  className="live-photo-video"
-                  src={liveUrl}
-                  autoPlay
-                  muted
-                  playsInline
-                  onEnded={() => setPlayingSlot(undefined)}
-                  style={{
-                    width: `${transform.scale * 100}%`,
-                    height: `${transform.scale * 100}%`,
-                    left: `${50 + transform.offsetX * 100}%`,
-                    top: `${50 + transform.offsetY * 100}%`,
-                  }}
-                />
-              )}
-              {liveUrl && (
-                <button
-                  className="editor-live"
-                  type="button"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={() => setPlayingSlot(playingSlot === index ? undefined : index)}
-                  aria-label={`Putar Live Photo ${index + 1}`}
-                >
-                  ●
-                </button>
-              )}
+              <LivePhotoLayer
+                clip={livePhotos[index]}
+                index={index}
+                playing={playingSlot === index}
+                mediaStyle={mediaStyle}
+                onToggle={() => setPlayingSlot(playingSlot === index ? undefined : index)}
+                onEnded={() => setPlayingSlot(undefined)}
+              />
               <button
                 className="editor-retake"
                 type="button"

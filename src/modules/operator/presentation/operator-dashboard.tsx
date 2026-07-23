@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { FrameService } from '../../frames/application/frame-service'
-import type { PhotoFrame, PhotoLayoutId } from '../../frames/domain/photo-frame'
+import type { FramePhotoSlot, PhotoFrame } from '../../frames/domain/photo-frame'
 import { FramePreview } from '../../frames/presentation/frame-preview'
-import { TEMPLATE_HEIGHT, TEMPLATE_WIDTH, templateLayoutOptions } from '../../camera/domain/template-layout'
+import { templateLayoutOptions } from '../../camera/domain/template-layout'
 import type { SessionService } from '../../sessions/application/session-service'
 import type { BoothSession } from '../../sessions/domain/booth-session'
+import { FrameSlotEditor } from './frame-slot-editor'
 
 type OperatorDashboardProps = {
   frameService: FrameService
@@ -26,7 +27,7 @@ export function OperatorDashboard({
   const [showAddFrame, setShowAddFrame] = useState(false)
   const [frameName, setFrameName] = useState('')
   const [frameFile, setFrameFile] = useState<File>()
-  const [frameLayout, setFrameLayout] = useState<PhotoLayoutId>('full')
+  const [frameSlots, setFrameSlots] = useState<FramePhotoSlot[]>([])
   const [frameActive, setFrameActive] = useState(true)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
@@ -94,11 +95,11 @@ export function OperatorDashboard({
         name: frameName,
         imageBlob: frameFile,
         isActive: frameActive,
-        layoutId: frameLayout,
+        customSlots: frameSlots,
       })
       setFrameName('')
       setFrameFile(undefined)
-      setFrameLayout('full')
+      setFrameSlots([])
       setFrameActive(true)
       if (fileInputRef.current) fileInputRef.current.value = ''
       setShowAddFrame(false)
@@ -114,13 +115,7 @@ export function OperatorDashboard({
   const changeFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     setFrameFile(file)
-    if (file) {
-      const match = file.name.match(/frame[\s_-]*([4-9])/i)
-      const detected = match
-        ? templateLayoutOptions[Number(match[1]) - 4]
-        : undefined
-      if (detected) setFrameLayout(detected.id)
-    }
+    setFrameSlots([])
     setError('')
   }
 
@@ -222,7 +217,9 @@ export function OperatorDashboard({
                     <small>
                       {frame.kind === 'preset' ? 'Frame bawaan' : 'Unggahan operator'}
                       {' · '}
-                      {templateLayoutOptions.find((layout) => layout.id === frame.layoutId)?.name ?? 'Frame 4'}
+                      {frame.customSlots?.length
+                        ? `${frame.customSlots.length} foto custom`
+                        : templateLayoutOptions.find((layout) => layout.id === frame.layoutId)?.name ?? 'Frame 4'}
                     </small>
                   </div>
                   {frame.isDefault && <span className="default-badge">DEFAULT</span>}
@@ -239,7 +236,7 @@ export function OperatorDashboard({
               </article>
             ))}
             <button className="add-frame-card" type="button" onClick={() => setShowAddFrame(true)}>
-              <span>＋</span><strong>Tambah frame baru</strong><small>PNG transparan · maks. 10 MB</small>
+              <span>＋</span><strong>Tambah frame baru</strong><small>PNG · maks. 10 MB</small>
             </button>
           </div>
         </section>
@@ -271,7 +268,7 @@ export function OperatorDashboard({
             <button className="dialog-close" type="button" onClick={() => setShowAddFrame(false)} aria-label="Tutup">×</button>
             <p className="eyebrow">FRAME BARU</p>
             <h2>Tambahkan desain acara</h2>
-            <p>Gunakan PNG transparan setengah 4R berukuran 600 × 1800 px. File Frame 4–9 dari ZIP akan dikenali otomatis.</p>
+            <p>Upload PNG, lalu tentukan sendiri area yang akan diisi foto. Ukuran dan resolusi PNG bebas.</p>
             <a
               className="template-example-link"
               href={exampleTemplateUrl}
@@ -281,42 +278,15 @@ export function OperatorDashboard({
             </a>
             <label htmlFor="frame-name">Nama frame</label>
             <input id="frame-name" value={frameName} onChange={(event) => setFrameName(event.target.value)} placeholder="Contoh: Opening Night" />
-            <fieldset className="layout-choice-field">
-              <legend>Layout PNG</legend>
-              <div className="layout-choice-grid">
-                {templateLayoutOptions.map((layout) => (
-                  <button
-                    className={frameLayout === layout.id ? 'active' : ''}
-                    type="button"
-                    key={layout.id}
-                    onClick={() => setFrameLayout(layout.id)}
-                    aria-pressed={frameLayout === layout.id}
-                  >
-                    <span className="layout-diagram" aria-hidden="true">
-                      {layout.slots.map((slot, index) => (
-                        <i
-                          key={index}
-                          style={{
-                            left: `${(slot.x / TEMPLATE_WIDTH) * 100}%`,
-                            top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
-                            width: `${(slot.width / TEMPLATE_WIDTH) * 100}%`,
-                            height: `${(slot.height / TEMPLATE_HEIGHT) * 100}%`,
-                            transform: `rotate(${slot.rotation ?? 0}deg)`,
-                          }}
-                        />
-                      ))}
-                    </span>
-                    <small>{layout.name}</small>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
             <label className={`upload-field ${frameFile ? 'has-file' : ''}`} htmlFor="frame-file">
               <span>{frameFile ? '✓' : '＋'}</span>
               <strong>{frameFile?.name ?? 'Pilih file PNG'}</strong>
               <small>{frameFile ? `${(frameFile.size / 1024 / 1024).toFixed(2)} MB` : 'Ketuk untuk membuka Files di iPad'}</small>
             </label>
             <input ref={fileInputRef} id="frame-file" className="visually-hidden" type="file" accept="image/png" onChange={changeFile} />
+            {frameFile && (
+              <FrameSlotEditor image={frameFile} slots={frameSlots} onChange={setFrameSlots} />
+            )}
             <label className="active-checkbox">
               <input type="checkbox" checked={frameActive} onChange={(event) => setFrameActive(event.target.checked)} />
               <span><strong>Langsung aktifkan frame</strong><small>Frame akan muncul di layar pengunjung.</small></span>

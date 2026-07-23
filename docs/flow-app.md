@@ -36,8 +36,8 @@ Pengelola konfigurasi acara, aset frame, batas cetak, dan riwayat sesi. Untuk MV
 - Akses kamera depan iPad dan pratinjau secara langsung.
 - Operator dapat menambahkan dan mengelola frame.
 - Pengunjung dapat memilih frame dari daftar frame yang diaktifkan operator.
-- Pengambilan 3 foto dengan hitung mundur.
-- Pilihan enam layout strip Frame 4–9, semuanya tetap menggunakan 3 foto landscape 4:3, termasuk layout foto miring.
+- Pengambilan foto dengan hitung mundur; jumlah foto mengikuti jumlah slot layout frame terpilih.
+- Pilihan layout strip dapat memiliki dua, tiga, atau jumlah slot lain. Kamera tetap portrait 4:5, sementara ukuran area foto dapat di-resize bebas oleh operator.
 - Retake per foto sebelum finalisasi.
 - Komposisi foto menjadi satu hasil akhir.
 - Simpan sesi secara lokal agar tetap berfungsi saat internet tidak stabil.
@@ -51,14 +51,15 @@ Pengelola konfigurasi acara, aset frame, batas cetak, dan riwayat sesi. Untuk MV
 2. Operator masuk ke dashboard menggunakan PIN.
 3. Operator menguji kamera, mengatur orientasi layar, lalu menambahkan atau memilih frame untuk acara.
 4. Operator mengaktifkan mode pengunjung.
-5. Setiap pengunjung mengambil foto, memilih frame, menerima hasil, lalu aplikasi otomatis kembali ke landing untuk pengunjung berikutnya.
+5. Setiap pengunjung memilih frame, mengambil foto sesuai jumlah slot, menerima hasil, lalu aplikasi otomatis kembali ke landing untuk pengunjung berikutnya.
 6. Jika koneksi terputus, sesi tetap berjalan menggunakan aset dan penyimpanan lokal di iPad.
 
 ## 4. Alur Utama Pengunjung
 
 ```mermaid
 flowchart TD
-    A[Landing / Idle] -->|Mulai| B[Persetujuan penggunaan kamera]
+    A[Landing / Idle] -->|Mulai| C[Pilih frame]
+    C --> B[Persetujuan penggunaan kamera]
     B -->|Izinkan| D[Persiapan foto]
     B -->|Ditolak| B1[Petunjuk mengaktifkan kamera]
     B1 --> B
@@ -66,8 +67,7 @@ flowchart TD
     E --> F[Ambil foto]
     F --> G{Semua foto selesai?}
     G -->|Belum| D
-    G -->|Ya| C[Pilih frame]
-    C --> H[Preview hasil]
+    G -->|Ya| H[Preview hasil]
     H -->|Ambil ulang| I[Pilih foto untuk retake]
     I --> D
     H -->|Gunakan foto| J[Proses komposisi]
@@ -82,11 +82,11 @@ flowchart TD
 ### Happy path
 
 1. Pengunjung melihat landing screen dan menekan **Mulai Foto**.
-2. Aplikasi meminta izin kamera jika izin belum tersedia.
-3. Aplikasi menampilkan posisi kamera dan instruksi singkat.
-4. Setelah tombol **Ambil Foto** ditekan, aplikasi menjalankan hitung mundur 3 detik.
-5. Foto diambil sebanyak 3 kali dengan jeda singkat di antara pengambilan.
-6. Pengunjung memilih satu frame/template.
+2. Pengunjung memilih satu frame/template.
+3. Aplikasi meminta izin kamera jika izin belum tersedia.
+4. Aplikasi menampilkan posisi kamera dan instruksi singkat.
+5. Setelah tombol **Ambil Foto** ditekan, aplikasi menjalankan hitung mundur 3 detik.
+6. Foto diambil sesuai jumlah slot pada frame dengan jeda singkat di antara pengambilan.
 7. Pengunjung melihat preview seluruh foto dengan frame terpilih.
 8. Pengunjung memilih **Gunakan Foto Ini** atau mengambil ulang salah satu foto.
 9. Aplikasi menggabungkan foto dengan frame terpilih.
@@ -150,7 +150,7 @@ flowchart TD
 **Konten:**
 
 - live camera preview;
-- Live Photo untuk setiap slot: foto diam resolusi tinggi dan klip 3 detik, terdiri dari 1,5 detik sebelum serta 1,5 detik sesudah shutter;
+- Live Photo untuk setiap slot: foto diam resolusi tinggi dan klip 4 detik, terdiri dari 2 detik sebelum serta 2 detik sesudah shutter;
 - panduan posisi wajah/tubuh;
 - progres, misalnya `Foto 1 dari 4`;
 - tombol **Ambil Foto**;
@@ -162,7 +162,7 @@ flowchart TD
 2. Jalankan hitung mundur `3 → 2 → 1`.
 3. Tampilkan flash visual dan ambil frame kamera.
 4. Simpan foto diam pada titik tengah rekaman Live Photo.
-5. Lanjutkan rekaman selama 1,5 detik setelah shutter, lalu simpan klip bersama slot foto.
+5. Lanjutkan rekaman selama 2 detik setelah shutter, lalu simpan klip bersama slot foto.
 6. Jika perekaman video tidak didukung browser, lanjutkan alur menggunakan foto diam.
 7. Simpan hasil sementara ke sesi lokal.
 8. Ulangi hingga jumlah foto terpenuhi.
@@ -177,7 +177,7 @@ flowchart TD
 
 - retake mengganti foto pada slot yang dipilih;
 - maksimal retake dapat dibatasi, misalnya 2 kali per slot, untuk menjaga antrean;
-- perubahan frame tetap diperbolehkan sebelum proses finalisasi;
+- frame tidak dapat diganti pada tahap review karena jumlah foto sudah mengikuti layout yang dipilih;
 - tampilkan konfirmasi sebelum keluar dan menghapus sesi.
 
 ### 5.6 Processing
@@ -261,9 +261,9 @@ Dashboard operator dapat dibuka melalui shortcut yang tidak terlihat pada alur p
 **Input:**
 
 - nama frame;
-- file frame berformat PNG transparan;
+- file frame berformat PNG; transparansi awal tidak diwajibkan;
 - thumbnail preview, dibuat otomatis dari file frame;
-- orientasi template strip `portrait` dengan rasio `1:3`;
+- hasil template dinormalisasi ke strip portrait `600 × 1800 px`, sedangkan ukuran PNG sumber bebas;
 - status **Aktif/Tidak Aktif**;
 - urutan tampilan pada layar pemilihan frame.
 
@@ -272,16 +272,20 @@ Dashboard operator dapat dibuka melalui shortcut yang tidak terlihat pada alur p
 1. Operator membuka **Dashboard → Kelola Frame**.
 2. Operator menekan **Tambah Frame**.
 3. Operator memilih file PNG dari penyimpanan iPad atau file picker.
-4. Aplikasi memvalidasi format, dimensi, ukuran file, dan transparansi.
-5. Aplikasi menampilkan contoh frame dengan area foto dummy.
-6. Operator mengisi nama, orientasi, dan status frame.
-7. Operator menekan **Simpan Frame**.
-8. Frame disimpan ke IndexedDB dan tersedia secara offline pada iPad.
+4. Aplikasi memvalidasi format dan ukuran file.
+5. Operator menambahkan 1–6 area foto di atas preview PNG.
+6. Operator menggeser, memperbesar, mengatur radius sudut, dan menentukan urutan area.
+7. Operator dapat mengaktifkan **Snap** untuk mengunci koordinat ke grid 20 px atau mematikannya untuk posisi bebas.
+8. Preview hasil tanpa garis bantu diperbarui langsung di samping editor.
+9. Operator mengisi nama dan status frame, lalu menekan **Simpan Frame**.
+10. Frame disimpan ke IndexedDB dan tersedia secara offline pada iPad.
 
 **Validasi:**
 
-- hanya menerima PNG dengan area transparan untuk penempatan foto;
-- template strip wajib berukuran `600 × 1800 px` (setengah 4R), sedangkan setiap area foto tetap `4:3`;
+- menerima PNG dengan ukuran dan transparansi apa pun; area foto ditentukan operator melalui editor visual;
+- area yang ditandai otomatis dilubangi pada overlay dan dapat di-resize bebas tanpa dikunci ke rasio tertentu;
+- editor mendukung `Ctrl/Cmd+C`, `Ctrl/Cmd+V`, `Ctrl/Cmd+Z`, serta tombol `Shift` saat drag/resize untuk penyesuaian presisi 1 px;
+- radius sudut setiap area diterapkan identik pada preview, JPG, dan MP4;
 - ukuran file maksimum ditentukan melalui konfigurasi, misalnya 10 MB;
 - nama frame wajib diisi dan tidak boleh duplikat;
 - frame yang tidak valid tidak boleh diaktifkan.
@@ -391,19 +395,21 @@ Nilai timeout harus dapat diubah dari konfigurasi acara.
 
 - Pengunjung dapat menyelesaikan alur dari landing hingga unduh tanpa login.
 - Kamera meminta izin dan menampilkan pesan yang tepat untuk setiap status izin.
-- Aplikasi mengambil tepat 3 foto dengan hitung mundur.
+- Aplikasi mengambil jumlah foto yang tepat sesuai jumlah slot frame terpilih.
 - Setiap slot foto dapat di-retake tanpa menghapus slot lain.
 - Frame terpilih muncul pada hasil final.
 - Perubahan layout frame langsung terlihat pada editor dan identik dengan hasil JPG serta MP4.
-- Hasil unduhan menggunakan kanvas 4R portrait (`1200 × 1800 px`) berisi dua strip identik `600 × 1800 px`, masing-masing dengan tiga area foto 4:3.
+- Hasil unduhan menggunakan kanvas 4R portrait (`1200 × 1800 px`) berisi dua strip identik `600 × 1800 px`; jumlah dan ukuran area foto mengikuti layout frame.
 - Posisi setiap foto dapat digeser dan diperbesar sebelum hasil akhir dibuat.
 - Hasil dapat diunduh sebagai JPG atau PNG dengan resolusi cetak yang memadai.
 - Kegagalan printer tidak menghalangi pengguna mengunduh hasil.
 - Sesi sebelumnya tidak terlihat setelah kembali ke landing.
 - Alur capture dan render utama tetap berjalan tanpa koneksi internet.
 - Seluruh tombol utama mudah digunakan pada layar sentuh dan memiliki state loading/disabled yang jelas.
-- Operator dapat menambahkan frame PNG dari iPad dan melihat preview sebelum menyimpan.
-- Operator memilih layout foto yang sesuai saat mengunggah PNG, dengan paket contoh seluruh layout tersedia sebagai ZIP.
+- Operator dapat menambahkan PNG dengan ukuran bebas dari iPad dan melihat preview sebelum menyimpan.
+- Operator dapat membuat 1–6 area foto secara manual, menggeser dan mengubah ukurannya, serta menentukan urutan pengambilan foto.
+- Operator dapat mengatur radius sudut per area dan mengaktifkan atau menonaktifkan snap grid 20 px.
+- Aplikasi hanya menyediakan Double Feature dua foto sebagai frame bawaan; preset bawaan lama dibersihkan tanpa menghapus frame unggahan operator.
 - Operator dapat mengaktifkan, menonaktifkan, mengurutkan, dan memilih frame default.
 - Pengunjung hanya melihat frame aktif dan frame pilihannya digunakan pada hasil final.
 - Aplikasi dapat menyelesaikan beberapa sesi pengunjung secara berurutan pada iPad tanpa memperlihatkan hasil sesi sebelumnya.

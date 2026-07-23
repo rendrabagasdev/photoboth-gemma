@@ -1,7 +1,7 @@
 import type { PhotoFrame } from '../domain/photo-frame'
 import { useObjectUrl } from '../../../shared/presentation/use-object-url'
 import { TemplateDecoration } from '../../camera/presentation/template-decoration'
-import { TEMPLATE_HEIGHT, TEMPLATE_WIDTH, resolveTemplateSlots } from '../../camera/domain/template-layout'
+import { TEMPLATE_HEIGHT, TEMPLATE_WIDTH, resolveFrameSlots } from '../../camera/domain/template-layout'
 
 type FramePreviewProps = {
   frame: PhotoFrame
@@ -12,7 +12,7 @@ type FramePreviewProps = {
 
 export function FramePreview({ frame, selected = false, compact = false, photos = [] }: FramePreviewProps) {
   const overlayUrl = useObjectUrl(frame.imageBlob)
-  const slots = resolveTemplateSlots(frame.layoutId)
+  const slots = resolveFrameSlots(frame)
 
   return (
     <div
@@ -28,6 +28,7 @@ export function FramePreview({ frame, selected = false, compact = false, photos 
             top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
             width: `${(slot.width / TEMPLATE_WIDTH) * 100}%`,
             height: `${(slot.height / TEMPLATE_HEIGHT) * 100}%`,
+            borderRadius: `${((slot.borderRadius ?? 0) / slot.width) * 100}% / ${((slot.borderRadius ?? 0) / slot.height) * 100}%`,
             transform: `rotate(${slot.rotation ?? 0}deg)`,
           }}
         >

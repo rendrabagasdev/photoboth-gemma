@@ -1,16 +1,16 @@
 # TOBFest Photobooth
 
-Aplikasi photobooth on-site berbasis React + TypeScript untuk digunakan sebagai kiosk di iPad. Pengunjung mengambil tiga foto, memilih frame, melakukan retake, lalu mengunduh atau mencetak hasilnya. Operator dapat menambah dan mengatur frame langsung dari perangkat.
+Aplikasi photobooth on-site berbasis React + TypeScript untuk digunakan sebagai kiosk di iPad. Pengunjung memilih frame, mengambil foto sesuai jumlah slot frame, melakukan retake, lalu mengunduh atau mencetak hasilnya. Operator dapat menambah dan mengatur frame langsung dari perangkat.
 
 ## Fitur
 
-- Alur kiosk: landing → kamera → pilih frame → review → hasil.
-- Capture tiga foto otomatis dengan countdown.
+- Alur kiosk: landing → pilih frame → kamera → review → hasil.
+- Jumlah foto otomatis mengikuti jumlah slot pada layout frame terpilih.
 - Live Photo per slot: foto resolusi tinggi + video 4 detik (2 detik sebelum dan sesudah shutter).
-- Kamera dan setiap area foto menggunakan rasio landscape `4:3`.
+- Kamera menggunakan rasio portrait `4:5`; ukuran setiap area foto pada frame dapat di-resize bebas.
 - Retake per foto.
 - Komposisi photo strip di browser menggunakan Canvas.
-- Enam layout bawaan Frame 4–9, semuanya memakai tepat tiga foto 4:3.
+- Satu frame bawaan **Double Feature** menggunakan dua foto 4:5; frame lainnya dibuat operator melalui upload PNG.
 - Unduh JPG dan cetak melalui dialog print/AirPrint.
 - Tambah frame PNG dari dashboard operator.
 - Aktif/nonaktifkan dan pilih frame default.
@@ -87,16 +87,20 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 
 ## Format Frame
 
-- File PNG transparan.
-- Ukuran template strip `600 × 1800 px` atau 2 × 6 inci pada 300 DPI.
+- File berformat PNG; transparansi awal tidak diwajibkan.
+- Ukuran, resolusi, dan rasio PNG unggahan bebas; aplikasi menormalkannya ke kanvas strip `600 × 1800 px`.
 - PNG merupakan satu desain strip penuh dan akan diduplikasi otomatis ke lembar 4R.
-- Frame bawaan menggunakan geometri Frame 4–9 dari desain dasar acara.
-- Saat mengunggah frame, operator memilih layout yang cocok dengan area transparan PNG.
+- Hanya frame dua foto **Double Feature** yang disediakan sebagai frame bawaan.
+- Setelah upload, operator menambahkan 1–6 area foto secara visual, lalu menggeser, memperbesar, menghapus, atau mengubah urutannya.
+- Setiap area memiliki pengaturan radius sudut tersendiri.
+- Toggle **Snap** mengunci pergerakan dan ukuran area ke grid 20 px; matikan untuk pengaturan bebas.
+- Modal editor berukuran besar dan menampilkan panel **Editor Area** serta **Preview Hasil** secara berdampingan.
+- Area foto yang ditandai otomatis dibuat transparan ketika frame disimpan, sehingga PNG awal boleh masih opaque pada bagian tersebut.
 - Tulisan **TOBFEST** ditambahkan otomatis pada area kosong bawah setiap strip.
 - Ukuran file maksimal 10 MB.
 - Frame disimpan secara lokal pada iPad dan tetap tersedia ketika offline.
 - Hasil unduhan berupa kanvas 4R portrait `1200 × 1800 px` berisi dua strip identik berukuran `600 × 1800 px`.
-- Pada halaman pilih frame, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang.
+- Pada halaman review, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang tanpa mengganti frame.
 - Live Photo dapat diputar di halaman review dan dibagikan sebagai MP4 dari halaman hasil.
 - Tombol Cetak 4R membuka PDF satu halaman berukuran tepat 102 × 152 mm tanpa margin. Dari pratinjau PDF di iPad, pilih AirPrint dengan media 4R dan skala 100%.
 - Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG dan video live MP4.
@@ -109,6 +113,6 @@ Area transparan layout **Frame 4** mengikuti koordinat berikut pada kanvas strip
 - Foto 2: `x 0`, `y 496`, ukuran `600 × 450`.
 - Foto 3: `x 0`, `y 965`, ukuran `600 × 450`.
 
-Unduh [paket semua contoh layout](public/templates/tobfest-template-layouts.zip). ZIP berisi enam PNG transparan Frame 4–9 berukuran `600 × 1800 px` dan petunjuk pemilihan layout ketika upload.
+Unduh [paket semua contoh layout](public/templates/tobfest-template-layouts.zip). ZIP berisi contoh PNG Frame 4–9; posisi foto untuk frame baru dapat ditentukan langsung melalui editor slot.
 
 Spesifikasi flow lengkap tersedia di [docs/flow-app.md](docs/flow-app.md).
