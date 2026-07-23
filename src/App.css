@@ -1795,7 +1795,23 @@
 @media print {
   @page {
     margin: 0;
-    size: 4in 6in;
+    size: 102mm 152mm;
+  }
+
+  html,
+  body,
+  #root,
+  .result-page {
+    width: 102mm !important;
+    height: 152mm !important;
+    min-width: 102mm !important;
+    min-height: 152mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 
   body * {
@@ -1808,8 +1824,8 @@
   }
 
   .final-photo-wrap {
-    width: 4in !important;
-    height: 6in !important;
+    width: 102mm !important;
+    height: 152mm !important;
     max-width: none !important;
     position: fixed !important;
     inset: 0 !important;
@@ -1818,11 +1834,15 @@
     background: var(--theme-surface) !important;
     box-shadow: none !important;
     transform: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .final-photo-wrap img {
-    width: 4in !important;
-    height: 6in !important;
+    width: 102mm !important;
+    height: 152mm !important;
     object-fit: fill !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 }

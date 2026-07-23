@@ -98,6 +98,7 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 - Hasil unduhan berupa kanvas 4R portrait `1200 × 1800 px` berisi dua strip identik berukuran `600 × 1800 px`.
 - Pada halaman pilih frame, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang.
 - Live Photo dapat diputar di halaman review dan dibagikan sebagai MP4 dari halaman hasil.
+- Halaman cetak/PDF memakai ukuran 4R portrait tepat 102 × 152 mm, tanpa margin. Pilih ukuran kertas 4R dan skala 100% saat mencetak.
 - Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG dan video live MP4.
 - QR dibuat otomatis setelah hasil selesai diproses.
 - Saat **Mulai lagi** ditekan, QR langsung dinonaktifkan dan kedua file dihapus dari object storage. Batas 24 jam tetap menjadi pengaman jika sesi tidak ditutup normal.
