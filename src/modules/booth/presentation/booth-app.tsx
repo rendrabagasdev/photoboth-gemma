@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
 import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
+import { composePrintPdf } from '../../camera/application/compose-print-pdf'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import {
   defaultPhotoTransforms,
@@ -100,8 +101,33 @@ function ResultPage({
   const [destroying, setDestroying] = useState(false)
   const [sharedResult, setSharedResult] = useState<SharedResult>()
   const shareInFlightRef = useRef(false)
+  const [preparingPrint, setPreparingPrint] = useState(false)
 
-  const print = () => window.print()
+  const print = async () => {
+    if (!photoSheet || preparingPrint) return
+    const previewWindow = window.open('', '_blank')
+    setPreparingPrint(true)
+    try {
+      const pdf = await composePrintPdf(photoSheet)
+      const pdfUrl = URL.createObjectURL(pdf)
+      if (previewWindow) {
+        previewWindow.location.replace(pdfUrl)
+      } else {
+        const link = document.createElement('a')
+        link.href = pdfUrl
+        link.download = `tobfest-4r-${sessionId.slice(0, 8)}.pdf`
+        link.target = '_blank'
+        link.click()
+      }
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 5 * 60 * 1_000)
+      setActionError('')
+    } catch {
+      previewWindow?.close()
+      setActionError('PDF 4R gagal dibuat.')
+    } finally {
+      setPreparingPrint(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -170,7 +196,7 @@ function ResultPage({
       <div className="result-copy">
         <h1>Selesai.</h1>
         <div className="result-buttons">
-          <button className="secondary-button" type="button" onClick={print}>▣ Cetak</button>
+          <button className="secondary-button" type="button" onClick={() => void print()} disabled={!photoSheet || preparingPrint}>{preparingPrint ? '…' : '▣ Cetak 4R'}</button>
         </div>
         {sharing && <span className="qr-loading" aria-live="polite">•••</span>}
         {qrImage && <img className="download-qr" src={qrImage} alt="QR unduh foto dan Live Photo" />}
