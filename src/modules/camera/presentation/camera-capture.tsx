@@ -16,6 +16,13 @@ type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'er
 type TimerSeconds = 3 | 5 | 10
 type CameraFilter = 'normal' | 'warm' | 'mono'
 type LensMode = 'normal' | 'wide'
+type CameraAspect = '4:5' | '1:1' | '5:4'
+
+const cameraAspectOptions: Record<CameraAspect, { width: number; height: number; ratio: number }> = {
+  '4:5': { width: 1200, height: 1500, ratio: 4 / 5 },
+  '1:1': { width: 1200, height: 1200, ratio: 1 },
+  '5:4': { width: 1500, height: 1200, ratio: 5 / 4 },
+}
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
@@ -41,6 +48,7 @@ export function CameraCapture({
   const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
   const [bright, setBright] = useState(false)
   const [lensMode, setLensMode] = useState<LensMode>('normal')
+  const [cameraAspect, setCameraAspect] = useState<CameraAspect>('4:5')
   const [slotCursor, setSlotCursor] = useState(0)
   const [acceptedPhotos, setAcceptedPhotos] = useState<string[]>(photos)
   const [captureComplete, setCaptureComplete] = useState(startInReview)
@@ -57,8 +65,7 @@ export function CameraCapture({
     const video = webcamRef.current?.video
     if (!video?.videoWidth || !video.videoHeight) return null
 
-    const outputWidth = 1200
-    const outputHeight = 1500
+    const { width: outputWidth, height: outputHeight } = cameraAspectOptions[cameraAspect]
     const sourceAspect = video.videoWidth / video.videoHeight
     const targetAspect = outputWidth / outputHeight
     let sourceWidth = video.videoWidth
@@ -179,6 +186,14 @@ export function CameraCapture({
     setSelectedPhotoSlot(slot)
   }
 
+  const selectCameraAspect = (aspect: CameraAspect) => {
+    if (aspect === cameraAspect) return
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = undefined
+    setCameraState('requesting')
+    setCameraAspect(aspect)
+  }
+
   const retakeSelected = () => {
     if (selectedPhotoSlot === undefined) return
     const slot = selectedPhotoSlot
@@ -209,18 +224,33 @@ export function CameraCapture({
             </button>
           ))}
         </div>
-        <div className="camera-lenses" aria-label="Pilih lensa">
-          {(['normal', 'wide'] as LensMode[]).map((mode) => (
-            <button
-              className={lensMode === mode ? 'active' : ''}
-              type="button"
-              key={mode}
-              onClick={() => setLensMode(mode)}
-              disabled={controlsDisabled}
-            >
-              {mode === 'normal' ? 'Normal' : 'Wide'}
-            </button>
-          ))}
+        <div className="camera-view-controls">
+          <div className="camera-aspects" aria-label="Pilih rasio kamera">
+            {(Object.keys(cameraAspectOptions) as CameraAspect[]).map((aspect) => (
+              <button
+                className={cameraAspect === aspect ? 'active' : ''}
+                type="button"
+                key={aspect}
+                onClick={() => selectCameraAspect(aspect)}
+                disabled={controlsDisabled}
+              >
+                {aspect}
+              </button>
+            ))}
+          </div>
+          <div className="camera-lenses" aria-label="Pilih lensa">
+            {(['normal', 'wide'] as LensMode[]).map((mode) => (
+              <button
+                className={lensMode === mode ? 'active' : ''}
+                type="button"
+                key={mode}
+                onClick={() => setLensMode(mode)}
+                disabled={controlsDisabled}
+              >
+                {mode === 'normal' ? 'Normal' : 'Wide'}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -238,15 +268,21 @@ export function CameraCapture({
         </aside>
 
         <div className="camera-main">
-          <div className="camera-stage">
+          <div className={`camera-stage camera-aspect-${cameraAspect.replace(':', '-')}`}>
             <Webcam
+              key={cameraAspect}
               ref={webcamRef}
               audio={false}
               className={`webcam camera-lens-${lensMode} camera-filter-${cameraFilter} ${bright ? 'camera-light-on' : ''}`}
               mirrored
               screenshotFormat="image/jpeg"
               screenshotQuality={0.92}
-              videoConstraints={{ facingMode: 'user', width: 1200, height: 1500, aspectRatio: 4 / 5 }}
+              videoConstraints={{
+                facingMode: 'user',
+                width: cameraAspectOptions[cameraAspect].width,
+                height: cameraAspectOptions[cameraAspect].height,
+                aspectRatio: cameraAspectOptions[cameraAspect].ratio,
+              }}
               onUserMedia={(stream) => {
                 streamRef.current = stream
                 setCameraState('ready')
@@ -318,6 +354,7 @@ export function CameraCapture({
               key={slot}
               onClick={() => acceptedPhotos[slot] && selectAccepted(slot)}
               disabled={!acceptedPhotos[slot] || cameraState !== 'ready'}
+              style={{ aspectRatio: `${cameraAspectOptions[cameraAspect].width} / ${cameraAspectOptions[cameraAspect].height}` }}
               aria-label={acceptedPhotos[slot] ? `Tinjau foto ${slot + 1}` : `Foto ${slot + 1} belum diambil`}
             >
               {acceptedPhotos[slot] && <img src={acceptedPhotos[slot]} alt={`Foto ${slot + 1}`} />}

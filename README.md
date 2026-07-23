@@ -7,7 +7,7 @@ Aplikasi photobooth on-site berbasis React + TypeScript untuk digunakan sebagai 
 - Alur kiosk: landing → pilih frame → kamera → review → hasil.
 - Jumlah foto otomatis mengikuti jumlah slot pada layout frame terpilih.
 - Live Photo per slot: foto resolusi tinggi + video 4 detik (2 detik sebelum dan sesudah shutter).
-- Kamera menggunakan rasio portrait `4:5`; ukuran setiap area foto pada frame dapat di-resize bebas.
+- Kamera dapat dipilih dalam rasio `4:5`, `1:1`, atau `5:4`; ukuran setiap area foto pada frame dapat di-resize bebas.
 - Retake per foto.
 - Komposisi photo strip di browser menggunakan Canvas.
 - Satu frame bawaan **Double Feature** menggunakan dua foto 4:5; frame lainnya dibuat operator melalui upload PNG.

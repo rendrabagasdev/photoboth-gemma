@@ -37,7 +37,7 @@ Pengelola konfigurasi acara, aset frame, batas cetak, dan riwayat sesi. Untuk MV
 - Operator dapat menambahkan dan mengelola frame.
 - Pengunjung dapat memilih frame dari daftar frame yang diaktifkan operator.
 - Pengambilan foto dengan hitung mundur; jumlah foto mengikuti jumlah slot layout frame terpilih.
-- Pilihan layout strip dapat memiliki dua, tiga, atau jumlah slot lain. Kamera tetap portrait 4:5, sementara ukuran area foto dapat di-resize bebas oleh operator.
+- Pilihan layout strip dapat memiliki dua, tiga, atau jumlah slot lain. Kamera menyediakan rasio `4:5`, `1:1`, dan `5:4`, sementara ukuran area foto dapat di-resize bebas oleh operator.
 - Retake per foto sebelum finalisasi.
 - Komposisi foto menjadi satu hasil akhir.
 - Simpan sesi secara lokal agar tetap berfungsi saat internet tidak stabil.
