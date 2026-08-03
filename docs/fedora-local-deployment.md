@@ -89,16 +89,29 @@ PRINTER_NAME=EpsonL3251
 PRINT_TEMP_DIR=/tmp/photobooth-print
 MAX_PRINT_FILE_MB=20
 PRINT_COMMAND_TIMEOUT_MS=10000
+PRINT_REQUEST_TTL_MS=600000
+MAX_CONCURRENT_PRINT_JOBS=1
 
 PRINT_MEDIA=
 PRINT_QUALITY=
 PRINT_FIT_TO_PAGE=true
+
+SHARE_TTL_HOURS=24
+MAX_SHARE_UPLOAD_MB=12
+MAX_CONCURRENT_SHARE_UPLOADS=2
+MAX_SHARE_COUNT=24
+MAX_SHARE_MEMORY_MB=128
+
+HTTP_REQUEST_TIMEOUT_MS=30000
+MAX_SERVER_CONNECTIONS=50
 
 HTTPS_CERT_FILE=
 HTTPS_KEY_FILE=
 ```
 
 `PRINTER_NAME` harus sama persis dengan nama queue dari `lpstat`; nama Epson di atas hanya contoh konfigurasi acara. `PRINT_MEDIA` dan `PRINT_QUALITY` sengaja kosong sampai nilai CUPS aktual diperiksa. Jika diisi, server meneruskannya sebagai `-o media=<nilai>` dan `-o print-quality=<nilai>`. `PRINT_FIT_TO_PAGE=true` meneruskan opsi CUPS `fit-to-page`; ubah menjadi `false` jika driver Epson/queue sudah mengatur scaling dengan benar.
+
+`MAX_CONCURRENT_PRINT_JOBS=1` membatasi submit CUPS agar tidak saling bertumpuk. Request ID disimpan selama `PRINT_REQUEST_TTL_MS` untuk mendeteksi retry yang mungkin sudah masuk antrean. Share QR dibatasi oleh umur, ukuran upload, jumlah, dan total RAM; jika kapasitas penuh, share paling lama dikeluarkan terlebih dahulu. Batas ini tidak memengaruhi file print sementara.
 
 Jangan isi `VITE_SHARE_API_URL` atau IP Fedora di source. Semua request aplikasi memakai URL relatif ke origin yang sedang dibuka.
 
@@ -158,7 +171,7 @@ curl -i \
   http://127.0.0.1:3000/api/print
 ```
 
-Expected result adalah HTTP `503` dengan `printer_queue_not_found` atau `printer_offline`, dan direktori sementara tidak menyisakan file. Ulangi request dengan UUID yang sama untuk memverifikasi HTTP `409 duplicate_print`. Kirim file kosong, tipe selain JPEG/PNG, serta file di atas `MAX_PRINT_FILE_MB` untuk memverifikasi HTTP `400`, `415`, dan `413`.
+Expected result adalah HTTP `503` dengan `printer_queue_not_found` atau `printer_offline`, dan direktori sementara tidak menyisakan file. Ulangi request dengan UUID yang sama untuk memverifikasi HTTP `409 duplicate_print_failed`. Job yang sudah diterima menghasilkan `duplicate_print_queued`; timeout menghasilkan `duplicate_print_uncertain`. Kirim file kosong, tipe selain JPEG/PNG, serta file di atas `MAX_PRINT_FILE_MB` untuk memverifikasi HTTP `400`, `415`, dan `413`.
 
 Jika paket CUPS Fedora menyediakan `ippeveprinter`, utilitas tersebut dapat dipakai untuk membuat tujuan IPP sementara tanpa printer fisik. Pastikan queue virtual terpisah dari queue acara dan hapus setelah pengujian. Karena ketersediaan utilitas berbeda antar-versi Fedora, failure-path test di atas tetap menjadi baseline yang tidak bergantung paket tambahan.
 
@@ -236,6 +249,26 @@ ExecStart=/PATH/DARI/WHICH/NPM run start
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=20
+UMask=0077
+
+# Hardening yang kompatibel dengan Node dan client CUPS
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/tmp
+MemoryMax=512M
+TasksMax=64
+LimitNOFILE=4096
 
 [Install]
 WantedBy=multi-user.target
@@ -250,7 +283,7 @@ sudo systemctl status photobooth.service
 journalctl -u photobooth.service -f
 ```
 
-Jangan menjalankan build dari `ExecStart`; build dilakukan saat deployment agar restart service cepat dan deterministik. Pastikan user service memiliki izin membaca repository/TLS key, menulis `PRINT_TEMP_DIR`, dan mengirim job ke CUPS.
+Jangan menjalankan build dari `ExecStart`; build dilakukan saat deployment agar restart service cepat dan deterministik. Pastikan user service memiliki izin membaca repository/TLS key, menulis `PRINT_TEMP_DIR`, dan mengirim job ke CUPS. Jika `PRINT_TEMP_DIR` dipindah keluar `/tmp`, sesuaikan `ReadWritePaths` dengan path aktual sebelum mengaktifkan `ProtectSystem=strict`.
 
 ## 11. Uji tanpa internet
 
@@ -262,6 +295,7 @@ Jangan menjalankan build dari `ExecStart`; build dilakukan saat deployment agar 
 6. Pastikan UI menampilkan **Menyiapkan foto**, **Mengirim ke printer**, lalu **Masuk antrean**.
 7. Pastikan `lpstat -o <queue>` menampilkan job dan `PRINT_TEMP_DIR` tidak menyisakan file setelah request selesai.
 8. Uji retry dengan mematikan printer/men-disable queue, lalu hidupkan kembali dan tekan **Coba cetak lagi**.
+9. Simulasikan koneksi iPad terputus sesaat setelah menekan Print. Retry harus memakai request ID yang sama; server mengembalikan status job sebelumnya dan tidak mengirim job kedua.
 
 Semua asset runtime berasal dari build lokal. Satu-satunya dependency network saat acara adalah jaringan lokal antar-perangkat; tidak ada CDN, Google Fonts, analytics, atau API eksternal pada flow lokal.
 
@@ -299,4 +333,4 @@ Jalankan `lpoptions -p EpsonL3251 -l`, cek media default CUPS, dan baru kemudian
 
 ### Tombol menampilkan gagal tetapi job ternyata masuk
 
-Periksa timeout dan log CUPS. Jangan langsung menekan retry berulang kali; lihat `lpstat -o` untuk mencegah cetak ganda. Naikkan `PRINT_COMMAND_TIMEOUT_MS` hanya jika command CUPS memang lambat.
+Tekan retry satu kali. Client mempertahankan request ID ketika respons server tidak diketahui, sehingga server akan melaporkan job sebelumnya sebagai `queued` alih-alih memanggil `lp` lagi. Tetap periksa `lpstat -o` dan log CUPS bila status belum jelas. Naikkan `PRINT_COMMAND_TIMEOUT_MS` hanya jika command CUPS memang lambat.

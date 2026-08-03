@@ -1,6 +1,7 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { createServer as createHttpsServer } from 'node:https'
 import { hostname as systemHostname } from 'node:os'
+import { createReadStream } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,6 +10,8 @@ import { handleShareRoute } from './local-share.js'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const distDirectory = resolve(projectRoot, 'dist')
+const DEFAULT_HTTP_REQUEST_TIMEOUT_MS = 30_000
+const DEFAULT_MAX_SERVER_CONNECTIONS = 50
 const mimeTypes: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -33,6 +36,11 @@ function portFromEnvironment(): number {
     throw new Error('PORT harus berupa angka antara 1 dan 65535.')
   }
   return port
+}
+
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
 function hostFromEnvironment(): string {
@@ -61,18 +69,39 @@ async function sendFile(request: IncomingMessage, response: ServerResponse, file
   try {
     const info = await stat(filePath)
     if (!info.isFile()) return false
-    const content = await readFile(filePath)
     const extension = extname(filePath).toLowerCase()
     response.statusCode = 200
     response.setHeader('content-type', mimeTypes[extension] ?? 'application/octet-stream')
-    response.setHeader('content-length', content.byteLength)
+    response.setHeader('content-length', info.size)
     response.setHeader(
       'cache-control',
       extension === '.html' || filePath.endsWith(`${sep}sw.js`)
         ? 'no-cache'
         : 'public, max-age=31536000, immutable',
     )
-    response.end(request.method === 'HEAD' ? undefined : content)
+    if (request.method === 'HEAD') {
+      response.end()
+      return true
+    }
+    await new Promise<void>((resolveStream, rejectStream) => {
+      const stream = createReadStream(filePath)
+      let settled = false
+      const finish = (error?: Error) => {
+        if (settled) return
+        settled = true
+        response.off('close', handleClose)
+        if (error) rejectStream(error)
+        else resolveStream()
+      }
+      const handleClose = () => {
+        stream.destroy()
+        finish()
+      }
+      response.once('close', handleClose)
+      stream.once('error', finish)
+      stream.once('end', () => finish())
+      stream.pipe(response)
+    })
     return true
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
@@ -113,6 +142,12 @@ async function handleStatic(request: IncomingMessage, response: ServerResponse, 
 async function handleRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
   response.setHeader('x-content-type-options', 'nosniff')
   response.setHeader('referrer-policy', 'same-origin')
+  response.setHeader('cross-origin-resource-policy', 'same-origin')
+  response.setHeader('permissions-policy', 'camera=(self), microphone=(self)')
+  response.setHeader(
+    'content-security-policy',
+    "default-src 'self'; base-uri 'self'; connect-src 'self'; frame-ancestors 'none'; img-src 'self' blob: data:; manifest-src 'self'; media-src 'self' blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:",
+  )
   const origin = requestOrigin(request)
   let url: URL
   try {
@@ -120,6 +155,16 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   } catch {
     sendJson(response, 400, { error: 'invalid_url' })
     return
+  }
+
+  const isMutation = request.method === 'POST' || request.method === 'DELETE'
+  if (isMutation && url.pathname.startsWith('/api/')) {
+    const fetchSite = request.headers['sec-fetch-site']
+    const requestOriginHeader = request.headers.origin
+    if (fetchSite === 'cross-site' || (requestOriginHeader && requestOriginHeader !== origin)) {
+      sendJson(response, 403, { error: 'cross_site_request_blocked' })
+      return
+    }
   }
 
   if (url.pathname === '/api/health') {
@@ -175,6 +220,18 @@ async function main(): Promise<void> {
         key: await readFile(resolve(projectRoot, keyPath)),
       }, listener)
     : createHttpServer(listener)
+
+  const requestTimeoutMs = positiveInteger(
+    process.env.HTTP_REQUEST_TIMEOUT_MS,
+    DEFAULT_HTTP_REQUEST_TIMEOUT_MS,
+  )
+  server.requestTimeout = requestTimeoutMs
+  server.headersTimeout = Math.min(10_000, requestTimeoutMs)
+  server.keepAliveTimeout = 5_000
+  server.maxConnections = positiveInteger(
+    process.env.MAX_SERVER_CONNECTIONS,
+    DEFAULT_MAX_SERVER_CONNECTIONS,
+  )
 
   await new Promise<void>((resolveListen, rejectListen) => {
     const handleListenError = (error: Error) => rejectListen(error)

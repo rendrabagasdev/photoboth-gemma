@@ -9,12 +9,61 @@ type LocalShare = {
   liveExtension: 'mp4'
   destroyTokenHash: string
   expiresAt: number
+  sizeBytes: number
 }
 
 const shares = new Map<string, LocalShare>()
-const SHARE_LIFETIME_MS = 24 * 60 * 60 * 1_000
-const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+const DEFAULT_SHARE_TTL_HOURS = 24
+const DEFAULT_MAX_UPLOAD_MB = 12
+const DEFAULT_MAX_SHARE_COUNT = 24
+const DEFAULT_MAX_SHARE_MEMORY_MB = 128
+const DEFAULT_MAX_CONCURRENT_UPLOADS = 2
 const SHARE_ID_PATTERN = /^[0-9a-f-]{36}$/i
+let activeShareUploads = 0
+let totalShareBytes = 0
+
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function shareLifetimeMs(): number {
+  return positiveInteger(process.env.SHARE_TTL_HOURS, DEFAULT_SHARE_TTL_HOURS) * 60 * 60 * 1_000
+}
+
+function maxUploadBytes(): number {
+  return positiveInteger(process.env.MAX_SHARE_UPLOAD_MB, DEFAULT_MAX_UPLOAD_MB) * 1024 * 1024
+}
+
+function deleteLocalShare(id: string): boolean {
+  const share = shares.get(id)
+  if (!share) return false
+  totalShareBytes = Math.max(0, totalShareBytes - share.sizeBytes)
+  return shares.delete(id)
+}
+
+function cleanupExpiredShares(): void {
+  const now = Date.now()
+  for (const [id, share] of shares) {
+    if (share.expiresAt <= now) deleteLocalShare(id)
+  }
+}
+
+function ensureShareCapacity(incomingBytes: number): void {
+  cleanupExpiredShares()
+  const maxCount = positiveInteger(process.env.MAX_SHARE_COUNT, DEFAULT_MAX_SHARE_COUNT)
+  const maxBytes = positiveInteger(process.env.MAX_SHARE_MEMORY_MB, DEFAULT_MAX_SHARE_MEMORY_MB) * 1024 * 1024
+  if (incomingBytes > maxBytes) throw new Error('share_capacity_reached')
+  while (shares.size >= maxCount || totalShareBytes + incomingBytes > maxBytes) {
+    const oldestId = shares.keys().next().value as string | undefined
+    if (!oldestId) break
+    console.warn(`[share] evicting oldest share=${oldestId}`)
+    deleteLocalShare(oldestId)
+  }
+}
+
+const cleanupTimer = setInterval(cleanupExpiredShares, 5 * 60 * 1_000)
+cleanupTimer.unref()
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
@@ -28,8 +77,9 @@ function sendJson(response: ServerResponse, value: unknown, status = 200): void 
 }
 
 async function requestBody(request: IncomingMessage): Promise<Buffer> {
+  const uploadLimit = maxUploadBytes()
   const declaredLength = Number(request.headers['content-length'] ?? 0)
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_UPLOAD_BYTES) {
+  if (Number.isFinite(declaredLength) && declaredLength > uploadLimit) {
     throw new Error('upload_too_large')
   }
   const chunks: Buffer[] = []
@@ -37,7 +87,7 @@ async function requestBody(request: IncomingMessage): Promise<Buffer> {
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
     size += buffer.byteLength
-    if (size > MAX_UPLOAD_BYTES) throw new Error('upload_too_large')
+    if (size > uploadLimit) throw new Error('upload_too_large')
     chunks.push(buffer)
   }
   return Buffer.concat(chunks)
@@ -47,7 +97,7 @@ function activeShare(id: string): LocalShare | undefined {
   const share = shares.get(id)
   if (!share) return undefined
   if (share.expiresAt > Date.now()) return share
-  shares.delete(id)
+  deleteLocalShare(id)
   return undefined
 }
 
@@ -90,10 +140,16 @@ async function createShare(
       sendJson(response, { error: 'invalid_upload_type' }, 400)
       return
     }
+    if (sessionId.length > 128) {
+      sendJson(response, { error: 'invalid_session_id' }, 400)
+      return
+    }
 
     const id = randomUUID()
     const destroyToken = randomBytes(24).toString('base64url')
-    const expiresAt = Date.now() + SHARE_LIFETIME_MS
+    const expiresAt = Date.now() + shareLifetimeMs()
+    const sizeBytes = photo.size + live.size
+    ensureShareCapacity(sizeBytes)
     shares.set(id, {
       photo: Buffer.from(await photo.arrayBuffer()),
       photoType: photo.type,
@@ -102,7 +158,9 @@ async function createShare(
       liveExtension: 'mp4',
       destroyTokenHash: hashToken(destroyToken),
       expiresAt,
+      sizeBytes,
     })
+    totalShareBytes += sizeBytes
     sendJson(response, {
       id,
       downloadUrl: `${origin}/download/${id}`,
@@ -112,6 +170,10 @@ async function createShare(
   } catch (error) {
     if (error instanceof Error && error.message === 'upload_too_large') {
       sendJson(response, { error: 'upload_too_large' }, 413)
+      return
+    }
+    if (error instanceof Error && error.message === 'share_capacity_reached') {
+      sendJson(response, { error: 'share_capacity_reached' }, 503)
       return
     }
     console.error('[share]', error)
@@ -126,7 +188,20 @@ export async function handleShareRoute(
   origin: string,
 ): Promise<boolean> {
   if (request.method === 'POST' && url.pathname === '/api/shares') {
-    await createShare(request, response, url, origin)
+    const maxConcurrent = positiveInteger(
+      process.env.MAX_CONCURRENT_SHARE_UPLOADS,
+      DEFAULT_MAX_CONCURRENT_UPLOADS,
+    )
+    if (activeShareUploads >= maxConcurrent) {
+      sendJson(response, { error: 'share_server_busy' }, 429)
+      return true
+    }
+    activeShareUploads += 1
+    try {
+      await createShare(request, response, url, origin)
+    } finally {
+      activeShareUploads = Math.max(0, activeShareUploads - 1)
+    }
     return true
   }
 
@@ -148,7 +223,7 @@ export async function handleShareRoute(
       sendJson(response, { error: 'forbidden' }, 403)
       return true
     }
-    shares.delete(id)
+    deleteLocalShare(id)
     response.statusCode = 204
     response.end()
     return true

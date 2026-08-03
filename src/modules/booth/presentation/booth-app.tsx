@@ -34,6 +34,13 @@ type BoothScreen =
 
 type PrintStatus = 'idle' | 'preparing' | 'sending' | 'queued' | 'failed'
 
+type PrintErrorResponse = {
+  error?: string
+  message?: string
+  requestStatus?: 'failed' | 'uncertain'
+  previousStatus?: 'processing' | 'queued' | 'failed' | 'uncertain'
+}
+
 const printStatusLabel: Record<Exclude<PrintStatus, 'idle'>, string> = {
   preparing: 'Menyiapkan foto',
   sending: 'Mengirim ke printer',
@@ -108,6 +115,7 @@ function ResultPage({
   const [sharedResult, setSharedResult] = useState<SharedResult>()
   const shareInFlightRef = useRef(false)
   const printInFlightRef = useRef(false)
+  const printRequestIdRef = useRef<string | undefined>(undefined)
   const photoSheetInFlightRef = useRef<Promise<Blob> | undefined>(undefined)
   const [printStatus, setPrintStatus] = useState<PrintStatus>('idle')
   const [printError, setPrintError] = useState('')
@@ -124,24 +132,41 @@ function ResultPage({
     printInFlightRef.current = true
     setPrintError('')
     setPrintStatus('preparing')
+    let requestSent = false
+    let serverResponded = false
     try {
       const sheet = await preparePhotoSheet()
       setPrintStatus('sending')
+      const requestId = printRequestIdRef.current ?? crypto.randomUUID()
+      printRequestIdRef.current = requestId
+      requestSent = true
       const response = await fetch('/api/print', {
         method: 'POST',
         headers: {
           'content-type': sheet.type || 'image/jpeg',
-          'x-print-request-id': crypto.randomUUID(),
+          'x-print-request-id': requestId,
         },
         body: sheet,
       })
+      serverResponded = true
+      const payload = await response.json().catch(() => undefined) as PrintErrorResponse | undefined
+      if (response.status === 409 && payload?.previousStatus === 'queued') {
+        setPrintStatus('queued')
+        return
+      }
       if (!response.ok) {
-        const failure = await response.json().catch(() => undefined) as { message?: string } | undefined
-        throw new Error(failure?.message || 'Server lokal menolak job print.')
+        const statusUncertain = payload?.requestStatus === 'uncertain'
+          || payload?.previousStatus === 'uncertain'
+          || payload?.previousStatus === 'processing'
+        if (!statusUncertain) printRequestIdRef.current = undefined
+        throw new Error(payload?.message || 'Server lokal menolak job print.')
       }
       setPrintStatus('queued')
     } catch (error) {
-      setPrintError(error instanceof Error ? error.message : 'Foto gagal dikirim ke printer.')
+      const message = requestSent && !serverResponded
+        ? 'Koneksi ke server terputus. Coba lagi akan memeriksa permintaan yang sama agar tidak mencetak dua kali.'
+        : error instanceof Error ? error.message : 'Foto gagal dikirim ke printer.'
+      setPrintError(message)
       setPrintStatus('failed')
     } finally {
       printInFlightRef.current = false

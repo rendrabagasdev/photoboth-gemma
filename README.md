@@ -67,7 +67,7 @@ npm run build
 npm run start
 ```
 
-Isi `PRINTER_NAME` berdasarkan output CUPS. Tombol **Cetak 4R** mengirim JPEG lembar 4R final ke `/api/print`; server memvalidasi file, memasukkannya ke antrean melalui command `lp`, lalu menghapus file sementara. Akses kamera Safari iPad melalui IP LAN memerlukan HTTPS lokal yang sertifikatnya dipercaya iPad.
+Isi `PRINTER_NAME` berdasarkan output CUPS. Tombol **Cetak 4R** mengirim JPEG lembar 4R final ke `/api/print`; server memvalidasi file, memasukkannya ke antrean melalui command `lp`, lalu menghapus file sementara. Request ID idempotent mencegah retry akibat koneksi terputus membuat job kedua. Akses kamera Safari iPad melalui IP LAN memerlukan HTTPS lokal yang sertifikatnya dipercaya iPad.
 
 Panduan lengkap Fedora, firewall, HTTPS iPad, CUPS, systemd, dan pengujian offline tersedia di [docs/fedora-local-deployment.md](docs/fedora-local-deployment.md).
 

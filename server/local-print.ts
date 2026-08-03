@@ -1,12 +1,13 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdir, unlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, unlink, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { extname, join } from 'node:path'
 
 const DEFAULT_MAX_FILE_MB = 20
 const DEFAULT_COMMAND_TIMEOUT_MS = 10_000
-const REQUEST_ID_TTL_MS = 2 * 60 * 1_000
+const DEFAULT_REQUEST_ID_TTL_MS = 10 * 60 * 1_000
+const DEFAULT_MAX_CONCURRENT_JOBS = 1
 const HEALTH_CACHE_MS = 5_000
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
@@ -28,28 +29,47 @@ type PrintConfig = {
   tempDir: string
   maxFileBytes: number
   commandTimeoutMs: number
+  requestIdTtlMs: number
+  maxConcurrentJobs: number
   media?: string
   quality?: string
   fitToPage: boolean
 }
 
+type PrintRequestStatus = 'processing' | 'queued' | 'failed' | 'uncertain'
+
+type PrintRequestRecord = {
+  expiresAt: number
+  status: PrintRequestStatus
+  jobId?: string
+  error?: string
+}
+
 class HttpError extends Error {
   readonly status: number
   readonly code: string
+  readonly details?: Record<string, unknown>
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
     super(message)
     this.status = status
     this.code = code
+    this.details = details
   }
 }
 
-const recentRequestIds = new Map<string, number>()
+const recentRequestIds = new Map<string, PrintRequestRecord>()
 let healthCache: { expiresAt: number; value: PrinterHealth } | undefined
+let activePrintRequests = 0
 
 function numberFromEnv(value: string | undefined, fallback: number): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function integerFromEnv(value: string | undefined, fallback: number): number {
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
 function safeOption(value: string | undefined): string | undefined {
@@ -69,6 +89,8 @@ function printConfig(): PrintConfig {
     tempDir: process.env.PRINT_TEMP_DIR?.trim() || '/tmp/photobooth-print',
     maxFileBytes: Math.floor(maxFileMb * 1024 * 1024),
     commandTimeoutMs: numberFromEnv(process.env.PRINT_COMMAND_TIMEOUT_MS, DEFAULT_COMMAND_TIMEOUT_MS),
+    requestIdTtlMs: integerFromEnv(process.env.PRINT_REQUEST_TTL_MS, DEFAULT_REQUEST_ID_TTL_MS),
+    maxConcurrentJobs: integerFromEnv(process.env.MAX_CONCURRENT_PRINT_JOBS, DEFAULT_MAX_CONCURRENT_JOBS),
     media: safeOption(process.env.PRINT_MEDIA),
     quality: safeOption(process.env.PRINT_QUALITY),
     fitToPage: (process.env.PRINT_FIT_TO_PAGE ?? 'true').toLowerCase() === 'true',
@@ -158,18 +180,41 @@ function validateImage(contentType: string, body: Buffer): '.jpg' | '.png' {
   throw new HttpError(415, 'unsupported_content_type', 'Content-Type harus image/jpeg atau image/png.')
 }
 
-function reserveRequestId(requestId: string): void {
+function beginPrintRequest(requestId: string, config: PrintConfig): void {
   const now = Date.now()
-  for (const [id, expiresAt] of recentRequestIds) {
-    if (expiresAt <= now) recentRequestIds.delete(id)
+  for (const [id, record] of recentRequestIds) {
+    if (record.expiresAt <= now) recentRequestIds.delete(id)
   }
   if (!UUID_PATTERN.test(requestId)) {
     throw new HttpError(400, 'invalid_request_id', 'X-Print-Request-Id harus berupa UUID.')
   }
-  if (recentRequestIds.has(requestId)) {
-    throw new HttpError(409, 'duplicate_print', 'Permintaan print yang sama sudah diterima.')
+  const existing = recentRequestIds.get(requestId)
+  if (existing) {
+    const messages: Record<PrintRequestStatus, string> = {
+      processing: 'Permintaan print yang sama masih diproses.',
+      queued: 'Permintaan print yang sama sudah masuk antrean CUPS.',
+      failed: 'Permintaan print sebelumnya sudah gagal dan tidak dijalankan ulang otomatis.',
+      uncertain: 'Status job sebelumnya belum pasti. Periksa antrean CUPS sebelum mengirim job baru.',
+    }
+    throw new HttpError(409, `duplicate_print_${existing.status}`, messages[existing.status], {
+      previousStatus: existing.status,
+      jobId: existing.jobId ?? null,
+      previousError: existing.error ?? null,
+    })
   }
-  recentRequestIds.set(requestId, now + REQUEST_ID_TTL_MS)
+  if (activePrintRequests >= config.maxConcurrentJobs) {
+    throw new HttpError(429, 'print_server_busy', 'Server sedang memproses job print lain. Coba lagi sebentar.')
+  }
+  recentRequestIds.set(requestId, {
+    expiresAt: now + config.requestIdTtlMs,
+    status: 'processing',
+  })
+  activePrintRequests += 1
+}
+
+function updatePrintRequest(requestId: string, update: Partial<PrintRequestRecord>): void {
+  const current = recentRequestIds.get(requestId)
+  if (current) recentRequestIds.set(requestId, { ...current, ...update })
 }
 
 async function inspectPrinter(config: PrintConfig): Promise<PrinterHealth> {
@@ -218,7 +263,11 @@ function lpFailure(error: unknown): HttpError {
     return new HttpError(503, 'cups_command_missing', 'Command lp tidak ditemukan di server Fedora.')
   }
   if (isTimeout(error)) {
-    return new HttpError(504, 'print_timeout', 'Pengiriman job ke CUPS mengalami timeout.')
+    return new HttpError(
+      504,
+      'print_timeout',
+      'Status job belum pasti karena command CUPS timeout. Periksa antrean sebelum mencoba lagi.',
+    )
   }
   const text = commandErrorText(error)
   if (/unknown (printer|destination)|invalid destination|not found|does not exist|no destinations/i.test(text)) {
@@ -232,8 +281,13 @@ function lpFailure(error: unknown): HttpError {
 
 export async function handleHealth(response: ServerResponse): Promise<void> {
   try {
-    const printer = await cachedPrinterHealth(printConfig())
-    sendJson(response, 200, { status: 'ok', printer })
+    const config = printConfig()
+    const printer = await cachedPrinterHealth(config)
+    sendJson(response, 200, {
+      status: 'ok',
+      printer,
+      print: { active: activePrintRequests, maxConcurrent: config.maxConcurrentJobs },
+    })
   } catch (error) {
     sendJson(response, 500, {
       status: 'error',
@@ -245,14 +299,17 @@ export async function handleHealth(response: ServerResponse): Promise<void> {
 
 export async function handlePrint(request: IncomingMessage, response: ServerResponse): Promise<void> {
   let tempFile = ''
+  let requestId = ''
+  let requestStarted = false
   try {
     const config = printConfig()
     if (!config.printerName) {
       throw new HttpError(503, 'printer_not_configured', 'PRINTER_NAME belum dikonfigurasi.')
     }
 
-    const requestId = String(request.headers['x-print-request-id'] ?? '').trim()
-    reserveRequestId(requestId)
+    requestId = String(request.headers['x-print-request-id'] ?? '').trim()
+    beginPrintRequest(requestId, config)
+    requestStarted = true
 
     const rawContentType = String(request.headers['content-type'] ?? '')
     const contentType = rawContentType.split(';', 1)[0].trim().toLowerCase()
@@ -278,6 +335,7 @@ export async function handlePrint(request: IncomingMessage, response: ServerResp
     }
 
     await mkdir(config.tempDir, { recursive: true, mode: 0o700 })
+    await chmod(config.tempDir, 0o700)
     tempFile = join(config.tempDir, `photo-${randomUUID()}${extension}`)
     if (!['.jpg', '.png'].includes(extname(tempFile))) {
       throw new HttpError(500, 'invalid_temp_file', 'Ekstensi file sementara tidak valid.')
@@ -298,20 +356,35 @@ export async function handlePrint(request: IncomingMessage, response: ServerResp
     }
 
     const match = output.stdout.match(/request id is\s+(\S+)/i)
+    const jobId = match?.[1]
+    updatePrintRequest(requestId, { status: 'queued', jobId })
+    console.info(`[print] queued request=${requestId} job=${jobId ?? 'unknown'} printer=${config.printerName}`)
     sendJson(response, 202, {
       status: 'queued',
       message: 'Foto masuk antrean CUPS.',
       requestId,
       printer: config.printerName,
-      jobId: match?.[1] ?? null,
+      jobId: jobId ?? null,
     })
   } catch (error) {
     const failure = error instanceof HttpError
       ? error
       : new HttpError(500, 'print_failed', 'Foto gagal dikirim ke CUPS.')
+    const requestStatus: PrintRequestStatus = failure.code === 'print_timeout' ? 'uncertain' : 'failed'
+    if (requestStarted && recentRequestIds.get(requestId)?.status === 'processing') {
+      updatePrintRequest(requestId, { status: requestStatus, error: failure.code })
+    }
     if (!(error instanceof HttpError)) console.error('[print]', error)
-    sendJson(response, failure.status, { status: 'error', error: failure.code, message: failure.message })
+    else console.warn(`[print] rejected request=${requestId || 'missing'} code=${failure.code}`)
+    sendJson(response, failure.status, {
+      status: 'error',
+      error: failure.code,
+      message: failure.message,
+      requestStatus: requestStarted ? requestStatus : undefined,
+      ...failure.details,
+    })
   } finally {
+    if (requestStarted) activePrintRequests = Math.max(0, activePrintRequests - 1)
     if (tempFile) {
       await unlink(tempFile).catch((error: unknown) => {
         console.error('[print] File sementara gagal dihapus:', error)
