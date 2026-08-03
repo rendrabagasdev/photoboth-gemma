@@ -5,7 +5,6 @@ import { DexieSessionRepository } from '../modules/sessions/infrastructure/dexie
 import { SessionService } from '../modules/sessions/application/session-service'
 import { appLockContainer } from './app-lock-container'
 import { HttpShareService } from '../modules/sharing/infrastructure/http-share-service'
-import { env } from '../config/env'
 
 const database = new BoothDatabase()
 
@@ -14,7 +13,7 @@ export const appContainer = {
   sessionService: new SessionService(new DexieSessionRepository(database)),
   unlockApp: appLockContainer.unlockApp,
   tokenService: appLockContainer.tokenService,
-  shareService: new HttpShareService(env.sharing.baseUrl),
+  shareService: new HttpShareService(),
 }
 
 export type AppContainer = typeof appContainer

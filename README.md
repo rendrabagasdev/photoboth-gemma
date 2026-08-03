@@ -11,7 +11,7 @@ Aplikasi photobooth on-site berbasis React + TypeScript untuk digunakan sebagai 
 - Retake per foto.
 - Komposisi photo strip di browser menggunakan Canvas.
 - Satu frame bawaan **Double Feature** menggunakan dua foto 4:5; frame lainnya dibuat operator melalui upload PNG.
-- Unduh JPG dan cetak melalui dialog print/AirPrint.
+- Unduh JPG dan kirim hasil final langsung ke queue CUPS pada server Fedora lokal.
 - Tambah frame PNG dari dashboard operator.
 - Aktif/nonaktifkan dan pilih frame default.
 - Penyimpanan lokal menggunakan IndexedDB/Dexie.
@@ -51,8 +51,25 @@ Build produksi:
 
 ```bash
 npm run lint
+npm run typecheck
 npm run build
+npm run start
 ```
+
+Server produksi Node.js listen pada `0.0.0.0` dengan port default `3000`, menyajikan asset Vite dari repository ini, dan menyediakan endpoint lokal untuk QR/share serta CUPS.
+
+### Deployment Lokal Fedora (Target Utama)
+
+```bash
+npm install
+cp .env.example .env
+npm run build
+npm run start
+```
+
+Isi `PRINTER_NAME` berdasarkan output CUPS. Tombol **Cetak 4R** mengirim JPEG lembar 4R final ke `/api/print`; server memvalidasi file, memasukkannya ke antrean melalui command `lp`, lalu menghapus file sementara. Akses kamera Safari iPad melalui IP LAN memerlukan HTTPS lokal yang sertifikatnya dipercaya iPad.
+
+Panduan lengkap Fedora, firewall, HTTPS iPad, CUPS, systemd, dan pengujian offline tersedia di [docs/fedora-local-deployment.md](docs/fedora-local-deployment.md).
 
 ## Tema UI
 
@@ -60,9 +77,9 @@ Warna, radius, dan shadow antarmuka dipusatkan sebagai CSS variables pada `:root
 
 Warna pada preset frame tetap dikelola terpisah karena merupakan bagian dari desain hasil foto, bukan tema antarmuka.
 
-### Deployment Vercel
+### Deployment Vercel (Legacy)
 
-Endpoint QR pada domain produksi menggunakan Vercel Functions dan Vercel Blob:
+Deployment lama dapat tetap dipertahankan. Endpoint QR pada domain Vercel menggunakan Vercel Functions dan Vercel Blob:
 
 1. Di dashboard Vercel, buka project → **Storage** → buat atau hubungkan **Private Blob Store**.
 2. Pastikan environment `BLOB_READ_WRITE_TOKEN` tersedia untuk Production.
@@ -102,10 +119,10 @@ PIN ini merupakan pengunci lokal kiosk, bukan autentikasi server. Gunakan Guided
 - Hasil unduhan berupa kanvas 4R portrait `1200 × 1800 px` berisi dua strip identik berukuran `600 × 1800 px`.
 - Pada halaman review, setiap foto dapat dipilih, digeser, diperbesar, dan diambil ulang tanpa mengganti frame.
 - Live Photo dapat diputar di halaman review dan dibagikan sebagai MP4 dari halaman hasil.
-- Tombol Cetak 4R membuka PDF satu halaman berukuran tepat 102 × 152 mm tanpa margin. Dari pratinjau PDF di iPad, pilih AirPrint dengan media 4R dan skala 100%.
+- Tombol Cetak 4R mengirim lembar final JPEG `1200 × 1800 px` ke server Fedora dan queue CUPS tanpa membuka dialog print browser.
 - Hasil dibagikan melalui QR; ponsel mendapat dua pilihan unduhan: foto JPG dan video live MP4.
-- QR dibuat otomatis setelah hasil selesai diproses.
-- Saat **Mulai lagi** ditekan, QR langsung dinonaktifkan dan kedua file dihapus dari object storage. Batas 24 jam tetap menjadi pengaman jika sesi tidak ditutup normal.
+- QR dibuat otomatis setelah hasil selesai diproses. Pada runtime Fedora, foto dan Live Photo untuk QR berada sementara di RAM server; deployment Vercel legacy tetap menggunakan object storage.
+- Saat **Mulai lagi** ditekan, QR langsung dinonaktifkan. Batas 24 jam menjadi pengaman jika sesi tidak ditutup normal; restart server Fedora juga membersihkan seluruh share in-memory.
 
 Area transparan layout **Frame 4** mengikuti koordinat berikut pada kanvas strip `600 × 1800 px`:
 

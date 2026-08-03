@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
 import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
-import { composePrintPdf } from '../../camera/application/compose-print-pdf'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import {
   defaultPhotoTransforms,
@@ -32,6 +31,15 @@ type BoothScreen =
   | 'result'
   | 'operator-lock'
   | 'operator'
+
+type PrintStatus = 'idle' | 'preparing' | 'sending' | 'queued' | 'failed'
+
+const printStatusLabel: Record<Exclude<PrintStatus, 'idle'>, string> = {
+  preparing: 'Menyiapkan foto',
+  sending: 'Mengirim ke printer',
+  queued: 'Masuk antrean',
+  failed: 'Gagal mencetak',
+}
 
 type BoothAppProps = {
   container: {
@@ -99,37 +107,50 @@ function ResultPage({
   const [destroying, setDestroying] = useState(false)
   const [sharedResult, setSharedResult] = useState<SharedResult>()
   const shareInFlightRef = useRef(false)
-  const [preparingPrint, setPreparingPrint] = useState(false)
+  const printInFlightRef = useRef(false)
+  const photoSheetInFlightRef = useRef<Promise<Blob> | undefined>(undefined)
+  const [printStatus, setPrintStatus] = useState<PrintStatus>('idle')
+  const [printError, setPrintError] = useState('')
+  const isPrinting = printStatus === 'preparing' || printStatus === 'sending'
+
+  const preparePhotoSheet = useCallback((): Promise<Blob> => {
+    if (photoSheet) return Promise.resolve(photoSheet)
+    photoSheetInFlightRef.current ??= composePhotoSheet(result)
+    return photoSheetInFlightRef.current
+  }, [photoSheet, result])
 
   const print = async () => {
-    if (!photoSheet || preparingPrint) return
-    const previewWindow = window.open('', '_blank')
-    setPreparingPrint(true)
+    if (printInFlightRef.current || printStatus === 'queued') return
+    printInFlightRef.current = true
+    setPrintError('')
+    setPrintStatus('preparing')
     try {
-      const pdf = await composePrintPdf(photoSheet)
-      const pdfUrl = URL.createObjectURL(pdf)
-      if (previewWindow) {
-        previewWindow.location.replace(pdfUrl)
-      } else {
-        const link = document.createElement('a')
-        link.href = pdfUrl
-        link.download = `tobfest-4r-${sessionId.slice(0, 8)}.pdf`
-        link.target = '_blank'
-        link.click()
+      const sheet = await preparePhotoSheet()
+      setPrintStatus('sending')
+      const response = await fetch('/api/print', {
+        method: 'POST',
+        headers: {
+          'content-type': sheet.type || 'image/jpeg',
+          'x-print-request-id': crypto.randomUUID(),
+        },
+        body: sheet,
+      })
+      if (!response.ok) {
+        const failure = await response.json().catch(() => undefined) as { message?: string } | undefined
+        throw new Error(failure?.message || 'Server lokal menolak job print.')
       }
-      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 5 * 60 * 1_000)
-      setActionError('')
-    } catch {
-      previewWindow?.close()
-      setActionError('PDF 4R gagal dibuat.')
+      setPrintStatus('queued')
+    } catch (error) {
+      setPrintError(error instanceof Error ? error.message : 'Foto gagal dikirim ke printer.')
+      setPrintStatus('failed')
     } finally {
-      setPreparingPrint(false)
+      printInFlightRef.current = false
     }
   }
 
   useEffect(() => {
     let active = true
-    void composePhotoSheet(result)
+    void preparePhotoSheet()
       .then((sheet) => {
         if (active) setPhotoSheet(sheet)
       })
@@ -139,7 +160,7 @@ function ResultPage({
     return () => {
       active = false
     }
-  }, [result])
+  }, [preparePhotoSheet])
 
   const createQr = useCallback(async () => {
     if (!liveResult || !photoSheet || shareInFlightRef.current || sharedResult) return
@@ -194,13 +215,31 @@ function ResultPage({
       <div className="result-copy">
         <h1>Selesai.</h1>
         <div className="result-buttons">
-          <button className="secondary-button" type="button" onClick={() => void print()} disabled={!photoSheet || preparingPrint}>{preparingPrint ? '…' : '▣ Cetak 4R'}</button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void print()}
+            disabled={isPrinting || printStatus === 'queued' || printStatus === 'failed'}
+          >
+            {printStatus === 'queued' ? '✓ Masuk antrean' : isPrinting ? '…' : '▣ Cetak 4R'}
+          </button>
         </div>
+        {printStatus !== 'idle' && (
+          <p className={`print-status ${printStatus}`} aria-live="polite">
+            {printStatusLabel[printStatus]}
+          </p>
+        )}
+        {printError && <p className="form-error print-error" role="alert">{printError}</p>}
+        {printStatus === 'failed' && (
+          <button className="secondary-button print-retry" type="button" onClick={() => void print()}>
+            Coba cetak lagi
+          </button>
+        )}
         {sharing && <span className="qr-loading" aria-live="polite">•••</span>}
         {qrImage && <img className="download-qr" src={qrImage} alt="QR unduh foto dan Live Photo" />}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
         {actionError && !qrImage && <button className="secondary-button" type="button" onClick={() => void createQr()}>Coba lagi</button>}
-        <button className="text-button" type="button" onClick={() => void startAgain()} disabled={destroying || sharing}>{destroying ? '…' : 'Mulai lagi →'}</button>
+        <button className="text-button" type="button" onClick={() => void startAgain()} disabled={destroying || sharing || isPrinting}>{destroying ? '…' : 'Mulai lagi →'}</button>
       </div>
       <div className="result-visual">
         <div className="final-photo-wrap">{resultUrl && <img src={resultUrl} alt="Hasil akhir photobooth" />}</div>

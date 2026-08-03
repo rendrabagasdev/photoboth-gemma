@@ -9,7 +9,4 @@ export const env = {
     pin: operatorPin.trim(),
     token: import.meta.env.VITE_OPERATOR_TOKEN ?? 'tobfest-local-operator',
   },
-  sharing: {
-    baseUrl: (import.meta.env.VITE_SHARE_API_URL ?? '').replace(/\/$/, ''),
-  },
 }

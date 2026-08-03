@@ -3,10 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.9.0"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && tsc -p tsconfig.api.json && vite build",
+    "build": "tsc -b && tsc -p tsconfig.api.json && tsc -p tsconfig.server.json && vite build",
     "lint": "eslint .",
+    "typecheck": "tsc -b && tsc -p tsconfig.api.json && tsc -p tsconfig.server.json --noEmit",
+    "start": "node --env-file-if-exists=.env dist-server/server/local-server.js",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -6,7 +6,7 @@ import { localSharePlugin } from './build/local-share-plugin.js'
 export default defineConfig({
   envPrefix: ['VITE_', 'APP_'],
   server: {
-    allowedHosts: [ "unadduceable-jeffry-squashy.ngrok-free.dev"],
+    host: '0.0.0.0',
   },
   plugins: [
     localSharePlugin(),
