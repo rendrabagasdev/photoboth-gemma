@@ -1184,10 +1184,12 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-.error-card { padding: 30px; text-align: center; }
+.error-card { z-index: 10; padding: 30px; text-align: center; }
 .error-card .large-icon,
 .fatal-page > span { width: 72px; height: 72px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 50%; color: var(--theme-on-primary); background: var(--theme-primary); font-size: 38px; font-weight: 950; }
 .error-card p { max-width: 420px; color: #d5d5ce; line-height: 1.6; }
+.error-card small { max-width: 460px; color: #f0f0e8; line-height: 1.5; }
+.camera-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; }
 
 .shutter-button {
   min-width: 360px;

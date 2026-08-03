@@ -1,3 +1,5 @@
+import { createUuid } from '../../../shared/crypto/random-uuid'
+
 export type BoothSessionStatus =
   | 'selecting-frame'
   | 'capturing'
@@ -28,7 +30,7 @@ export type BoothSession = {
 
 export function createBoothSession(): BoothSession {
   return {
-    id: crypto.randomUUID(),
+    id: createUuid(),
     status: 'selecting-frame',
     frameId: null,
     photos: [],

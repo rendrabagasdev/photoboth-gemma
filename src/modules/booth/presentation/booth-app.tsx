@@ -21,6 +21,7 @@ import type { UnlockApp } from '../../app-lock/application/use-cases/unlock-app'
 import type { TokenServices } from '../../app-lock/application/ports/token-services'
 import type { ShareService, SharedResult } from '../../sharing/application/share-service'
 import QRCode from 'qrcode'
+import { createUuid } from '../../../shared/crypto/random-uuid'
 
 type BoothScreen =
   | 'idle'
@@ -137,7 +138,7 @@ function ResultPage({
     try {
       const sheet = await preparePhotoSheet()
       setPrintStatus('sending')
-      const requestId = printRequestIdRef.current ?? crypto.randomUUID()
+      const requestId = printRequestIdRef.current ?? createUuid()
       printRequestIdRef.current = requestId
       requestSent = true
       const response = await fetch('/api/print', {

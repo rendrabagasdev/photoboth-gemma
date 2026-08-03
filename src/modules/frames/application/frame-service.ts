@@ -1,6 +1,7 @@
 import type { FrameRepository } from './frame-repository'
 import { defaultFrames, type FramePhotoSlot, type PhotoFrame } from '../domain/photo-frame'
 import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
+import { createUuid } from '../../../shared/crypto/random-uuid'
 
 const FRAME_WIDTH = 600
 const FRAME_HEIGHT = 1800
@@ -125,7 +126,7 @@ export class FrameService {
 
     const now = new Date().toISOString()
     const frame: PhotoFrame = {
-      id: crypto.randomUUID(),
+      id: createUuid(),
       name: input.name.trim(),
       description: 'Frame buatan operator.',
       kind: 'uploaded',

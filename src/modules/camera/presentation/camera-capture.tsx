@@ -18,6 +18,12 @@ type CameraFilter = 'normal' | 'warm' | 'mono'
 type LensMode = 'normal' | 'wide'
 type CameraAspect = '4:5' | '1:1' | '5:4'
 
+type CameraErrorInfo = {
+  title: string
+  message: string
+  hint: string
+}
+
 const cameraAspectOptions: Record<CameraAspect, { width: number; height: number; ratio: number }> = {
   '4:5': { width: 1200, height: 1500, ratio: 4 / 5 },
   '1:1': { width: 1200, height: 1200, ratio: 1 },
@@ -26,6 +32,54 @@ const cameraAspectOptions: Record<CameraAspect, { width: number; height: number;
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
+function describeCameraError(error: string | DOMException): CameraErrorInfo {
+  if (!window.isSecureContext) {
+    return {
+      title: 'Kamera memerlukan HTTPS',
+      message: 'Halaman dibuka melalui koneksi yang tidak dianggap aman oleh iPad.',
+      hint: 'Buka alamat HTTPS Fedora dan pastikan sertifikatnya sudah dipercaya di iPad.',
+    }
+  }
+
+  const name = typeof error === 'string' ? error : error.name
+  const message = typeof error === 'string' ? error : error.message
+  const details = `${name} ${message}`.toLowerCase()
+
+  if (/notallowed|permission|denied|security/.test(details)) {
+    return {
+      title: 'Izin kamera ditolak',
+      message: 'Safari belum mendapat izin memakai kamera untuk alamat photobooth ini.',
+      hint: 'Ubah Camera menjadi Allow pada pengaturan situs Safari, lalu tekan Coba lagi.',
+    }
+  }
+  if (/notfound|devicesnotfound/.test(details)) {
+    return {
+      title: 'Kamera tidak ditemukan',
+      message: 'iPad tidak melaporkan kamera yang dapat digunakan.',
+      hint: 'Periksa pembatasan Screen Time/MDM, lalu restart Safari atau iPad.',
+    }
+  }
+  if (/notreadable|trackstart|abort/.test(details)) {
+    return {
+      title: 'Kamera sedang tidak tersedia',
+      message: 'Kamera mungkin sedang dipakai aplikasi lain atau belum dilepas oleh Safari.',
+      hint: 'Tutup aplikasi kamera/video lain, kembali ke Safari, lalu tekan Coba lagi.',
+    }
+  }
+  if (/overconstrained|constraint/.test(details)) {
+    return {
+      title: 'Mode kamera tidak didukung',
+      message: 'Kamera tidak dapat memenuhi resolusi atau rasio yang dipilih.',
+      hint: 'Kembali, buka kamera lagi, lalu gunakan rasio 4:5 dan mode Wide.',
+    }
+  }
+  return {
+    title: 'Kamera belum dapat digunakan',
+    message: 'Safari gagal memulai kamera.',
+    hint: 'Periksa HTTPS dan izin kamera, lalu tekan Coba lagi.',
+  }
 }
 
 export function CameraCapture({
@@ -53,6 +107,8 @@ export function CameraCapture({
   const [acceptedPhotos, setAcceptedPhotos] = useState<string[]>(photos)
   const [captureComplete, setCaptureComplete] = useState(startInReview)
   const [selectedPhotoSlot, setSelectedPhotoSlot] = useState<number>()
+  const [cameraAttempt, setCameraAttempt] = useState(0)
+  const [cameraError, setCameraError] = useState<CameraErrorInfo>()
 
   useEffect(() => {
     activeRef.current = true
@@ -190,8 +246,17 @@ export function CameraCapture({
     if (aspect === cameraAspect) return
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = undefined
+    setCameraError(undefined)
     setCameraState('requesting')
     setCameraAspect(aspect)
+  }
+
+  const retryCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = undefined
+    setCameraError(undefined)
+    setCameraState('requesting')
+    setCameraAttempt((current) => current + 1)
   }
 
   const retakeSelected = () => {
@@ -270,7 +335,7 @@ export function CameraCapture({
         <div className="camera-main">
           <div className={`camera-stage camera-aspect-${cameraAspect.replace(':', '-')}`}>
             <Webcam
-              key={cameraAspect}
+              key={`${cameraAspect}-${cameraAttempt}`}
               ref={webcamRef}
               audio={false}
               className={`webcam camera-lens-${lensMode} camera-filter-${cameraFilter} ${bright ? 'camera-light-on' : ''}`}
@@ -285,9 +350,13 @@ export function CameraCapture({
               }}
               onUserMedia={(stream) => {
                 streamRef.current = stream
+                setCameraError(undefined)
                 setCameraState('ready')
               }}
-              onUserMediaError={() => setCameraState('error')}
+              onUserMediaError={(error) => {
+                setCameraError(describeCameraError(error))
+                setCameraState('error')
+              }}
             />
 
             <div className="capture-progress">
@@ -321,8 +390,13 @@ export function CameraCapture({
             {cameraState === 'error' && (
               <div className="camera-overlay error-card">
                 <span className="large-icon">!</span>
-                <strong>Kamera belum dapat digunakan</strong>
-                <p>Izinkan akses kamera, lalu muat ulang aplikasi.</p>
+                <strong>{cameraError?.title ?? 'Kamera belum dapat digunakan'}</strong>
+                <p>{cameraError?.message ?? 'Safari gagal memulai kamera.'}</p>
+                <small>{cameraError?.hint ?? 'Periksa HTTPS dan izin kamera.'}</small>
+                <div className="camera-error-actions">
+                  <button className="primary-button" type="button" onClick={retryCamera}>Coba lagi</button>
+                  <button className="secondary-button" type="button" onClick={onCancel}>Kembali</button>
+                </div>
               </div>
             )}
           </div>
