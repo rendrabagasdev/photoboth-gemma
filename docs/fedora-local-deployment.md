@@ -230,7 +230,31 @@ Jaga private key tetap lokal dan jangan commit direktori `certs/`. Tambahkan pol
 
 ## 10. systemd
 
-Catat hasil `which npm`. Gunakan path itu pada `ExecStart`; contoh berikut memakai placeholder karena path Fedora tergantung metode instalasi Node:
+Gunakan systemd agar aplikasi berjalan di background, pulih jika proses gagal, dan
+otomatis hidup setelah Fedora restart. Jangan memakai `pnpm start &` atau `nohup`
+untuk operasional acara.
+
+Catat user, lokasi repository, serta path absolut Node dan pnpm:
+
+```bash
+whoami
+pwd
+which node
+dirname "$(which node)"
+which pnpm
+dirname "$(which pnpm)"
+```
+
+Repository menyediakan template
+[`deploy/systemd/photobooth.service.example`](../deploy/systemd/photobooth.service.example).
+Salin template lalu ganti seluruh placeholder berdasarkan output di atas:
+
+```bash
+sudo cp deploy/systemd/photobooth.service.example /etc/systemd/system/photobooth.service
+sudo nano /etc/systemd/system/photobooth.service
+```
+
+Contoh hasil akhirnya:
 
 ```ini
 [Unit]
@@ -241,14 +265,16 @@ Requires=cups.service
 
 [Service]
 Type=simple
-User=USER_FEDORA
-Group=USER_FEDORA
-WorkingDirectory=/home/USER_FEDORA/photo-both-tobfest
-EnvironmentFile=/home/USER_FEDORA/photo-both-tobfest/.env
-ExecStart=/PATH/DARI/WHICH/NPM run start
-Restart=on-failure
+User=bagaskara
+Group=bagaskara
+WorkingDirectory=/home/bagaskara/photo-both-tobfest
+EnvironmentFile=/home/bagaskara/photo-both-tobfest/.env
+Environment=PATH=/home/bagaskara/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/bagaskara/.local/share/pnpm/pnpm start
+Restart=always
 RestartSec=5
 TimeoutStopSec=20
+KillSignal=SIGTERM
 UMask=0077
 
 # Hardening yang kompatibel dengan Node dan client CUPS
@@ -274,7 +300,9 @@ LimitNOFILE=4096
 WantedBy=multi-user.target
 ```
 
-Simpan sebagai `/etc/systemd/system/photobooth.service`, ganti seluruh placeholder berdasarkan lokasi clone aktual dan hasil `which npm`, lalu:
+Path pada contoh tidak boleh disalin mentah jika output `which node` atau `which pnpm`
+berbeda. systemd tidak memuat konfigurasi shell interaktif; karena itu `ExecStart` dan
+`PATH` harus eksplisit. Setelah file disimpan, aktifkan service:
 
 ```bash
 sudo systemctl daemon-reload
@@ -283,7 +311,36 @@ sudo systemctl status photobooth.service
 journalctl -u photobooth.service -f
 ```
 
+`enable --now` langsung menjalankan service dan mengaktifkannya saat boot. Command
+operasional sehari-hari:
+
+```bash
+sudo systemctl restart photobooth.service
+sudo systemctl stop photobooth.service
+sudo systemctl start photobooth.service
+sudo journalctl -u photobooth.service -n 100 --no-pager
+```
+
+Setelah source diperbarui, build dahulu lalu restart service:
+
+```bash
+pnpm install
+pnpm build
+sudo systemctl restart photobooth.service
+```
+
 Jangan menjalankan build dari `ExecStart`; build dilakukan saat deployment agar restart service cepat dan deterministik. Pastikan user service memiliki izin membaca repository/TLS key, menulis `PRINT_TEMP_DIR`, dan mengirim job ke CUPS. Jika `PRINT_TEMP_DIR` dipindah keluar `/tmp`, sesuaikan `ReadWritePaths` dengan path aktual sebelum mengaktifkan `ProtectSystem=strict`.
+
+Uji autostart dengan reboot, lalu periksa service dan endpoint:
+
+```bash
+sudo reboot
+sudo systemctl status photobooth.service
+curl -k https://127.0.0.1:3000/api/health
+```
+
+Opsi `-k` hanya untuk diagnosis lokal. Safari iPad tetap harus mempercayai root CA
+HTTPS agar akses kamera bekerja tanpa peringatan sertifikat.
 
 ## 11. Uji tanpa internet
 

@@ -1,0 +1,45 @@
+[Unit]
+Description=TOBFest Photobooth Local Server
+After=network-online.target cups.service
+Wants=network-online.target
+Requires=cups.service
+
+[Service]
+Type=simple
+User=FEDORA_USER
+Group=FEDORA_USER
+WorkingDirectory=/ABSOLUTE/PATH/TO/photo-both-tobfest
+EnvironmentFile=/ABSOLUTE/PATH/TO/photo-both-tobfest/.env
+
+# Gunakan hasil `dirname "$(which node)"` dan `which pnpm` dari Fedora.
+# PATH dibutuhkan jika pnpm memakai shebang `/usr/bin/env node`.
+Environment=PATH=/ABSOLUTE/PATH/TO/NODE-DIR:/ABSOLUTE/PATH/TO/PNPM-DIR:/usr/local/bin:/usr/bin:/bin
+ExecStart=/ABSOLUTE/PATH/TO/pnpm start
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0077
+
+# Pembatasan dasar untuk service lokal. PRINT_TEMP_DIR default berada di /tmp.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/tmp
+MemoryMax=512M
+TasksMax=64
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
