@@ -1,0 +1,54 @@
+name: tobfest-photobooth
+
+services:
+  photobooth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_OPERATOR_PIN: ${VITE_OPERATOR_PIN:?VITE_OPERATOR_PIN wajib diisi di .env}
+        VITE_OPERATOR_TOKEN: ${VITE_OPERATOR_TOKEN:?VITE_OPERATOR_TOKEN wajib diisi di .env}
+    image: tobfest-photobooth:local
+    container_name: tobfest-photobooth
+    restart: unless-stopped
+
+    # Khusus target Linux/Fedora. Container dapat mengakses CUPS host melalui
+    # 127.0.0.1:631 tanpa mengekspos port administrasi CUPS ke LAN.
+    network_mode: host
+
+    env_file:
+      - .env
+    environment:
+      HOSTNAME: 0.0.0.0
+      CUPS_SERVER: ${CUPS_SERVER:-127.0.0.1:631}
+
+    # Samakan dengan `id -u` dan `id -g` user Fedora agar private key HTTPS
+    # yang di-mount read-only tetap dapat dibaca tanpa menjalankan container root.
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    volumes:
+      - ./certs:/app/certs:ro,Z
+
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    pids_limit: 100
+    mem_limit: 512m
+    stop_grace_period: 30s
+
+    healthcheck:
+      test: ["CMD", "node", "/app/deploy/docker/healthcheck.mjs"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

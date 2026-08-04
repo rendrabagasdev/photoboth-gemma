@@ -58,18 +58,17 @@ npm run start
 
 Server produksi Node.js listen pada `0.0.0.0` dengan port default `3000`, menyajikan asset Vite dari repository ini, dan menyediakan endpoint lokal untuk QR/share serta CUPS.
 
-### Deployment Lokal Fedora (Target Utama)
+### Deployment Docker Fedora (Target Utama)
 
 ```bash
-npm install
 cp .env.example .env
-npm run build
-npm run start
+docker compose build
+docker compose up -d
 ```
 
-Isi `PRINTER_NAME` berdasarkan output CUPS. Tombol **Cetak 4R** mengirim JPEG lembar 4R final ke `/api/print`; server memvalidasi file, memasukkannya ke antrean melalui command `lp`, lalu menghapus file sementara. Request ID idempotent mencegah retry akibat koneksi terputus membuat job kedua. Akses kamera Safari iPad melalui IP LAN memerlukan HTTPS lokal yang sertifikatnya dipercaya iPad.
+Docker menjalankan aplikasi di background dan menghidupkannya kembali setelah Fedora restart. CUPS tetap berjalan native pada Fedora; container mengaksesnya melalui localhost host tanpa memasukkan driver printer ke image. Isi `PRINTER_NAME` berdasarkan output CUPS. Tombol **Cetak 4R** mengirim JPEG lembar 4R final ke `/api/print`; server memvalidasi file, memasukkannya ke antrean melalui command `lp`, lalu menghapus file sementara. Request ID idempotent mencegah retry akibat koneksi terputus membuat job kedua. Akses kamera Safari iPad melalui IP LAN memerlukan HTTPS lokal yang sertifikatnya dipercaya iPad.
 
-Panduan lengkap Fedora, firewall, HTTPS iPad, CUPS, systemd, dan pengujian offline tersedia di [docs/fedora-local-deployment.md](docs/fedora-local-deployment.md).
+Panduan Docker utama tersedia di [docs/fedora-docker-deployment.md](docs/fedora-docker-deployment.md). Panduan runtime Node/systemd langsung tetap tersedia sebagai fallback di [docs/fedora-local-deployment.md](docs/fedora-local-deployment.md).
 
 ## Tema UI
 

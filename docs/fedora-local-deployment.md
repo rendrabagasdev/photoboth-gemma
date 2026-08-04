@@ -1,6 +1,10 @@
 # Deployment Lokal Fedora
 
-Dokumen ini menjadikan server Fedora sebagai target utama saat acara. Aplikasi React, endpoint share/QR lokal, health check, dan endpoint print berjalan dalam satu proses Node.js dari repository yang sama. Deployment Vercel lama tetap dapat disimpan, tetapi tidak diperlukan oleh runtime lokal.
+> **Target utama sekarang Docker Compose.** Ikuti
+> [Deployment Docker di Fedora](fedora-docker-deployment.md). Dokumen ini dipertahankan
+> sebagai referensi runtime Node/systemd langsung dan fallback troubleshooting.
+
+Dokumen ini menjelaskan mode fallback tanpa container. Aplikasi React, endpoint share/QR lokal, health check, dan endpoint print berjalan dalam satu proses Node.js dari repository yang sama. Deployment Vercel lama tetap dapat disimpan, tetapi tidak diperlukan oleh runtime lokal.
 
 ## 1. Arsitektur runtime
 
@@ -228,7 +232,7 @@ Sertifikat harus memiliki IP Fedora pada Subject Alternative Name dan ditandatan
 
 Jaga private key tetap lokal dan jangan commit direktori `certs/`. Tambahkan pola lokal sendiri ke `.git/info/exclude` atau simpan certificate di luar repository lalu gunakan path absolut pada environment. Server menerima path absolut maupun relatif terhadap root repository.
 
-## 10. systemd
+## 10. systemd (fallback tanpa Docker)
 
 Gunakan systemd agar aplikasi berjalan di background, pulih jika proses gagal, dan
 otomatis hidup setelah Fedora restart. Jangan memakai `pnpm start &` atau `nohup`
