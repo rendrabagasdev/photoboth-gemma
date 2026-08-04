@@ -4,6 +4,11 @@ Docker Compose adalah target runtime utama saat acara. Aplikasi tetap satu modul
 monolith: React/Vite dan API Node dibangun menjadi satu image, sedangkan CUPS tetap
 berjalan native di Fedora agar queue USB maupun Wi-Fi dikelola host.
 
+Untuk QR yang harus dapat dibuka dari luar LAN, arsitektur target memakai Cloudflare
+R2 private dan Worker publik. Lihat
+[QR Publik dengan Cloudflare R2](cloudflare-r2-public-sharing.md). Cloudflare Tunnel,
+Tailscale, dan Caddy tidak diperlukan pada desain tersebut.
+
 ```text
 iPad (HTTPS :3000)
         │

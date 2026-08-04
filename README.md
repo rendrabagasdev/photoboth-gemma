@@ -70,6 +70,13 @@ Docker menjalankan aplikasi di background dan menghidupkannya kembali setelah Fe
 
 Panduan Docker utama tersedia di [docs/fedora-docker-deployment.md](docs/fedora-docker-deployment.md). Panduan runtime Node/systemd langsung tetap tersedia sebagai fallback di [docs/fedora-local-deployment.md](docs/fedora-local-deployment.md).
 
+QR publik lintas jaringan direncanakan menggunakan Cloudflare R2 private dan Worker,
+tanpa mengekspos endpoint print Fedora. Keputusan arsitektur, provisioning, environment
+target, expiry, security, dan skenario pengujiannya tersedia di
+[docs/cloudflare-r2-public-sharing.md](docs/cloudflare-r2-public-sharing.md). Adapter R2
+belum aktif pada runtime saat ini; share Fedora tetap lokal sampai tahap integrasi itu
+selesai.
+
 ## Tema UI
 
 Warna, radius, dan shadow antarmuka dipusatkan sebagai CSS variables pada `:root` di `src/index.css`. Ubah token `--theme-primary`, `--theme-background`, `--theme-surface`, dan token semantik lainnya untuk mengganti tema secara konsisten tanpa mengubah setiap komponen.
