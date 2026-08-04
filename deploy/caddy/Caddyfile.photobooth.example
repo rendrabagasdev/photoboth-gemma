@@ -1,0 +1,5 @@
+# Cloudflare Tunnel mengakhiri HTTPS publik dan meneruskan HTTP ke Caddy.
+# PUBLIC_ORIGIN aplikasi harus: https://photobooth.ovastudio.dev
+http://photobooth.ovastudio.dev {
+	reverse_proxy host.docker.internal:3000
+}

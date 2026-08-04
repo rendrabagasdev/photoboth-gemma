@@ -9,6 +9,11 @@ R2 private dan Worker publik. Lihat
 [QR Publik dengan Cloudflare R2](cloudflare-r2-public-sharing.md). Cloudflare Tunnel,
 Tailscale, dan Caddy tidak diperlukan pada desain tersebut.
 
+Jika tujuan utamanya menghindari instalasi CA lokal pada perangkat booth, aplikasi
+dapat dipublikasikan melalui Cloudflare Tunnel dan Caddy. Lihat
+[Cloudflare Tunnel dan Caddy untuk HTTPS Publik](fedora-cloudflare-caddy.md). Tunnel
+dipakai untuk akses booth; R2/Worker tetap menjadi target penyimpanan QR publik.
+
 ```text
 iPad (HTTPS :3000)
         │

@@ -77,6 +77,11 @@ target, expiry, security, dan skenario pengujiannya tersedia di
 belum aktif pada runtime saat ini; share Fedora tetap lokal sampai tahap integrasi itu
 selesai.
 
+Untuk membuka aplikasi booth melalui HTTPS publik tanpa memasang CA `mkcert` pada
+setiap perangkat, gunakan panduan
+[Cloudflare Tunnel dan Caddy](docs/fedora-cloudflare-caddy.md). Mode ini memakai
+`PUBLIC_ORIGIN` dan tetap menempatkan CUPS di Fedora.
+
 ## Tema UI
 
 Warna, radius, dan shadow antarmuka dipusatkan sebagai CSS variables pada `:root` di `src/index.css`. Ubah token `--theme-primary`, `--theme-background`, `--theme-surface`, dan token semantik lainnya untuk mengganti tema secara konsisten tanpa mengubah setiap komponen.

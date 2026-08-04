@@ -51,7 +51,33 @@ function hostFromEnvironment(): string {
   return configured
 }
 
+function publicOriginFromEnvironment(): string | undefined {
+  const configured = process.env.PUBLIC_ORIGIN?.trim()
+  if (!configured) return undefined
+
+  let url: URL
+  try {
+    url = new URL(configured)
+  } catch {
+    throw new Error('PUBLIC_ORIGIN harus berupa origin HTTP/HTTPS yang valid.')
+  }
+
+  const hasUnexpectedParts = url.username
+    || url.password
+    || url.pathname !== '/'
+    || url.search
+    || url.hash
+  if ((url.protocol !== 'https:' && url.protocol !== 'http:') || hasUnexpectedParts) {
+    throw new Error('PUBLIC_ORIGIN hanya boleh berisi protocol, hostname, dan port opsional.')
+  }
+
+  return url.origin
+}
+
 function requestOrigin(request: IncomingMessage): string {
+  const publicOrigin = publicOriginFromEnvironment()
+  if (publicOrigin) return publicOrigin
+
   const encrypted = Boolean((request.socket as typeof request.socket & { encrypted?: boolean }).encrypted)
   const protocol = encrypted ? 'https' : 'http'
   const host = request.headers.host ?? `localhost:${process.env.PORT ?? 3000}`
@@ -196,6 +222,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 async function main(): Promise<void> {
   const host = hostFromEnvironment()
   const port = portFromEnvironment()
+  const publicOrigin = publicOriginFromEnvironment()
   const certificatePath = process.env.HTTPS_CERT_FILE?.trim()
   const keyPath = process.env.HTTPS_KEY_FILE?.trim()
   if (Boolean(certificatePath) !== Boolean(keyPath)) {
@@ -243,6 +270,7 @@ async function main(): Promise<void> {
   })
   const protocol = certificatePath ? 'https' : 'http'
   console.log(`TOBFest Photobooth listening on ${protocol}://${host}:${port}`)
+  if (publicOrigin) console.log(`Public origin: ${publicOrigin}`)
   console.log(`Printer queue: ${process.env.PRINTER_NAME?.trim() || '(belum dikonfigurasi)'}`)
 
   server.on('error', (error) => console.error('[server]', error))

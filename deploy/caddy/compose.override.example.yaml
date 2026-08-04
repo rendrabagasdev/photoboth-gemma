@@ -1,0 +1,5 @@
+# Gabungkan bagian ini ke service Caddy yang sudah ada di Fedora.
+services:
+  caddy:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
