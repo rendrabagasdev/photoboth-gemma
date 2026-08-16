@@ -22,6 +22,9 @@ export async function composePhotoSheet(strip: Blob): Promise<Blob> {
 
   const { image, url } = await loadBlobImage(strip)
   try {
+    const cutX = TEMPLATE_WIDTH
+    const markLength = 30
+
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT)
     context.drawImage(image, 0, 0, TEMPLATE_WIDTH, TEMPLATE_HEIGHT)
@@ -30,11 +33,15 @@ export async function composePhotoSheet(strip: Blob): Promise<Blob> {
     // Garis potong berada tepat di tengah lembar 4R, di antara kedua strip.
     context.save()
     context.beginPath()
-    context.setLineDash([18, 12])
     context.lineWidth = 2
     context.strokeStyle = 'rgba(70, 70, 70, 0.72)'
-    context.moveTo(TEMPLATE_WIDTH, 0)
-    context.lineTo(TEMPLATE_WIDTH, PRINT_HEIGHT)
+
+    context.moveTo(cutX, 0)
+    context.lineTo(cutX, markLength)
+
+    context.moveTo(cutX, PRINT_HEIGHT - markLength)
+    context.lineTo(cutX, PRINT_HEIGHT)
+
     context.stroke()
     context.restore()
   } finally {

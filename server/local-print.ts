@@ -33,6 +33,7 @@ type PrintConfig = {
   maxConcurrentJobs: number
   media?: string
   quality?: string
+  cupsOptions: string[]
   fitToPage: boolean
 }
 
@@ -81,9 +82,45 @@ function safeOption(value: string | undefined): string | undefined {
   return normalized
 }
 
+function cupsOptionsFromEnv(value: string | undefined, variableName: string): string[] {
+  const normalized = value?.trim()
+  if (!normalized) return []
+
+  const options = normalized.split(',').map((option) => option.trim()).filter(Boolean)
+  if (options.length > 12) {
+    throw new Error(`${variableName} memuat terlalu banyak opsi CUPS.`)
+  }
+
+  return options.map((option) => {
+    const separator = option.indexOf('=')
+    const name = option.slice(0, separator)
+    const optionValue = option.slice(separator + 1)
+    if (
+      separator <= 0 ||
+      !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(name) ||
+      !/^[A-Za-z0-9._:/-]{1,100}$/.test(optionValue)
+    ) {
+      throw new Error(`${variableName} berisi opsi CUPS tidak valid.`)
+    }
+    return `${name}=${optionValue}`
+  })
+}
+
 function printConfig(): PrintConfig {
-  const printerName = safeOption(process.env.PRINTER_NAME) ?? ''
   const maxFileMb = numberFromEnv(process.env.MAX_PRINT_FILE_MB, DEFAULT_MAX_FILE_MB)
+  const profile = (process.env.PRINT_PROFILE ?? '').trim().toLowerCase()
+  if (profile && !/^[a-z0-9_-]{1,32}$/.test(profile)) {
+    throw new Error('PRINT_PROFILE tidak valid.')
+  }
+  const profilePrinterVariable = profile ? `PRINT_PRINTER_NAME_${profile.toUpperCase()}` : undefined
+  const profileVariable = profile ? `PRINT_CUPS_OPTIONS_${profile.toUpperCase()}` : undefined
+  const printerName = safeOption(
+    profilePrinterVariable ? process.env[profilePrinterVariable] : process.env.PRINTER_NAME,
+  ) ?? safeOption(process.env.PRINTER_NAME) ?? ''
+  const cupsOptions = cupsOptionsFromEnv(
+    profileVariable ? process.env[profileVariable] : process.env.PRINT_CUPS_OPTIONS,
+    profileVariable ?? 'PRINT_CUPS_OPTIONS',
+  )
   return {
     printerName,
     tempDir: process.env.PRINT_TEMP_DIR?.trim() || '/tmp/photobooth-print',
@@ -93,6 +130,7 @@ function printConfig(): PrintConfig {
     maxConcurrentJobs: integerFromEnv(process.env.MAX_CONCURRENT_PRINT_JOBS, DEFAULT_MAX_CONCURRENT_JOBS),
     media: safeOption(process.env.PRINT_MEDIA),
     quality: safeOption(process.env.PRINT_QUALITY),
+    cupsOptions,
     fitToPage: (process.env.PRINT_FIT_TO_PAGE ?? 'true').toLowerCase() === 'true',
   }
 }
@@ -345,6 +383,7 @@ export async function handlePrint(request: IncomingMessage, response: ServerResp
     const args = ['-d', config.printerName]
     if (config.media) args.push('-o', `media=${config.media}`)
     if (config.quality) args.push('-o', `print-quality=${config.quality}`)
+    for (const option of config.cupsOptions) args.push('-o', option)
     if (config.fitToPage) args.push('-o', 'fit-to-page')
     args.push(tempFile)
 

@@ -100,6 +100,13 @@ PRINT_MEDIA=
 PRINT_QUALITY=
 PRINT_FIT_TO_PAGE=true
 
+# Pilih profil koneksi aktif: usb atau wifi
+PRINT_PROFILE=wifi
+PRINT_PRINTER_NAME_USB=EpsonL3251USB
+PRINT_PRINTER_NAME_WIFI=EpsonL3251WiFi
+PRINT_CUPS_OPTIONS_USB=
+PRINT_CUPS_OPTIONS_WIFI=PageSize=4x6.Borderless,ColorModel=RGB,cupsPrintQuality=High
+
 SHARE_TTL_HOURS=24
 MAX_SHARE_UPLOAD_MB=12
 MAX_CONCURRENT_SHARE_UPLOADS=2
@@ -114,6 +121,8 @@ HTTPS_KEY_FILE=
 ```
 
 `PRINTER_NAME` harus sama persis dengan nama queue dari `lpstat`; nama Epson di atas hanya contoh konfigurasi acara. `PRINT_MEDIA` dan `PRINT_QUALITY` sengaja kosong sampai nilai CUPS aktual diperiksa. Jika diisi, server meneruskannya sebagai `-o media=<nilai>` dan `-o print-quality=<nilai>`. `PRINT_FIT_TO_PAGE=true` meneruskan opsi CUPS `fit-to-page`; ubah menjadi `false` jika driver Epson/queue sudah mengatur scaling dengan benar.
+
+`PRINT_PROFILE` membedakan koneksi tanpa mengubah default CUPS Fedora: `usb` memakai `PRINT_PRINTER_NAME_USB` dan `PRINT_CUPS_OPTIONS_USB`, sedangkan `wifi` memakai padanan `*_WIFI`. Setiap profil meneruskan opsi sebagai argumen aman terpisah, misalnya `-o ColorModel=RGB`; tidak ada shell command yang dibangun dari `.env`. Untuk L3251 Wi-Fi pada output contoh, `PageSize=4x6.Borderless,ColorModel=RGB,cupsPrintQuality=High` sesuai dengan opsi yang benar-benar terdeteksi. Queue USB dan Wi-Fi sebaiknya diberi nama CUPS berbeda (`EpsonL3251USB` dan `EpsonL3251WiFi`) supaya keduanya dapat tersimpan sekaligus. Saat kabel USB dipakai, cukup ubah satu baris menjadi `PRINT_PROFILE=usb`, lalu recreate container. Jika nama queue profil kosong, server memakai `PRINTER_NAME` sebagai fallback.
 
 `MAX_CONCURRENT_PRINT_JOBS=1` membatasi submit CUPS agar tidak saling bertumpuk. Request ID disimpan selama `PRINT_REQUEST_TTL_MS` untuk mendeteksi retry yang mungkin sudah masuk antrean. Share QR dibatasi oleh umur, ukuran upload, jumlah, dan total RAM; jika kapasitas penuh, share paling lama dikeluarkan terlebih dahulu. Batas ini tidak memengaruhi file print sementara.
 
