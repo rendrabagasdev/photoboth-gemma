@@ -3,10 +3,12 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { localSharePlugin } from './build/local-share-plugin.js'
 
+/** @type {import('vite').UserConfig} */
 export default defineConfig({
   envPrefix: ['VITE_', 'APP_'],
   server: {
     host: '0.0.0.0',
+    allowedHosts: true,
   },
   plugins: [
     localSharePlugin(),

@@ -1,6 +1,5 @@
 import type { FrameRepository } from './frame-repository'
 import { defaultFrames, type FramePhotoSlot, type PhotoFrame } from '../domain/photo-frame'
-import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
 import { createUuid } from '../../../shared/crypto/random-uuid'
 
 const FRAME_WIDTH = 600
@@ -8,7 +7,6 @@ const FRAME_HEIGHT = 1800
 
 function createFrameOverlay(
   bitmap: ImageBitmap,
-  slots: FramePhotoSlot[],
 ): Promise<Blob> {
   const canvas = document.createElement('canvas')
   canvas.width = FRAME_WIDTH
@@ -17,24 +15,6 @@ function createFrameOverlay(
   if (!context) throw new Error('Perangkat tidak mendukung editor frame.')
 
   context.drawImage(bitmap, 0, 0, FRAME_WIDTH, FRAME_HEIGHT)
-  context.globalCompositeOperation = 'destination-out'
-  context.fillStyle = '#000000'
-  slots.forEach((slot) => {
-    context.save()
-    context.translate(slot.x + slot.width / 2, slot.y + slot.height / 2)
-    context.rotate(((slot.rotation ?? 0) * Math.PI) / 180)
-    roundedRectPath(
-      context,
-      -slot.width / 2,
-      -slot.height / 2,
-      slot.width,
-      slot.height,
-      slot.borderRadius,
-    )
-    context.fill()
-    context.restore()
-  })
-  context.globalCompositeOperation = 'source-over'
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -110,7 +90,7 @@ export class FrameService {
     const bitmap = await createImageBitmap(input.imageBlob)
     let imageBlob: Blob
     try {
-      imageBlob = await createFrameOverlay(bitmap, input.customSlots)
+      imageBlob = await createFrameOverlay(bitmap)
     } finally {
       bitmap.close()
     }
