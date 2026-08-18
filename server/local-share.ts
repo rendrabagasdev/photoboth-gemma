@@ -1,5 +1,9 @@
+import { execFile } from 'node:child_process'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 
 type LocalShare = {
   photo: Buffer
@@ -115,6 +119,40 @@ function requestHeaders(request: IncomingMessage): Headers {
   return headers
 }
 
+async function remuxMp4(input: Buffer): Promise<Buffer<ArrayBufferLike> | undefined> {
+  const tempDirectory = await mkdtemp(join(tmpdir(), 'tobfest-live-'))
+  const inputPath = join(tempDirectory, 'input.mp4')
+  const outputPath = join(tempDirectory, 'output.mp4')
+
+  try {
+    await writeFile(inputPath, input)
+    await new Promise<void>((resolve, reject) => {
+      execFile(
+        'ffmpeg',
+        [
+          '-y',
+          '-i', inputPath,
+          '-c', 'copy',
+          '-movflags', '+faststart',
+          outputPath,
+        ],
+        { windowsHide: true },
+        (error) => {
+          if (error) reject(error)
+          else resolve()
+        },
+      )
+    })
+
+    const output = await readFile(outputPath)
+    return output.byteLength > 0 ? output : undefined
+  } catch {
+    return undefined
+  } finally {
+    await rm(tempDirectory, { recursive: true, force: true })
+  }
+}
+
 async function createShare(
   request: IncomingMessage,
   response: ServerResponse,
@@ -150,11 +188,22 @@ async function createShare(
     const expiresAt = Date.now() + shareLifetimeMs()
     const sizeBytes = photo.size + live.size
     ensureShareCapacity(sizeBytes)
+
+    let liveBuffer: Buffer<ArrayBufferLike> = Buffer.from(await live.arrayBuffer())
+    let liveType = live.type || 'video/mp4'
+    if (liveType.includes('mp4')) {
+      const remuxed = await remuxMp4(liveBuffer)
+      if (remuxed) {
+        liveBuffer = remuxed
+        liveType = 'video/mp4'
+      }
+    }
+
     shares.set(id, {
       photo: Buffer.from(await photo.arrayBuffer()),
       photoType: photo.type,
-      live: Buffer.from(await live.arrayBuffer()),
-      liveType: live.type || 'video/mp4',
+      live: liveBuffer,
+      liveType,
       liveExtension: 'mp4',
       destroyTokenHash: hashToken(destroyToken),
       expiresAt,

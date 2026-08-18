@@ -25,7 +25,7 @@ ENV NODE_ENV=production \
     PORT=3000
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends cups-client \
+    && apt-get install --yes --no-install-recommends cups-client ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
