@@ -15,8 +15,8 @@ type CameraCaptureProps = {
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
 type TimerSeconds = 3 | 5 | 10
 type CameraFilter = 'normal' | 'warm' | 'mono'
-type LensMode = 'normal' | 'wide'
-type CameraAspect = '4:5' | '1:1' | '5:4'
+type LensMode = 'wide' | 'normal'
+type CameraAspect = '5:4'
 
 type CameraErrorInfo = {
   title: string
@@ -25,8 +25,6 @@ type CameraErrorInfo = {
 }
 
 const cameraAspectOptions: Record<CameraAspect, { width: number; height: number; ratio: number }> = {
-  '4:5': { width: 1200, height: 1500, ratio: 4 / 5 },
-  '1:1': { width: 1200, height: 1200, ratio: 1 },
   '5:4': { width: 1500, height: 1200, ratio: 5 / 4 },
 }
 
@@ -101,8 +99,8 @@ export function CameraCapture({
   const [showGrid, setShowGrid] = useState(false)
   const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
   const [bright, setBright] = useState(false)
-  const [lensMode, setLensMode] = useState<LensMode>('normal')
-  const [cameraAspect, setCameraAspect] = useState<CameraAspect>('4:5')
+  const [lensMode, setLensMode] = useState<LensMode>('wide')
+  const [cameraAspect, setCameraAspect] = useState<CameraAspect>('5:4')
   const [slotCursor, setSlotCursor] = useState(0)
   const [acceptedPhotos, setAcceptedPhotos] = useState<string[]>(photos)
   const [captureComplete, setCaptureComplete] = useState(startInReview)
@@ -288,34 +286,6 @@ export function CameraCapture({
               <span aria-hidden="true">◷</span> {seconds}s
             </button>
           ))}
-        </div>
-        <div className="camera-view-controls">
-          <div className="camera-aspects" aria-label="Pilih rasio kamera">
-            {(Object.keys(cameraAspectOptions) as CameraAspect[]).map((aspect) => (
-              <button
-                className={cameraAspect === aspect ? 'active' : ''}
-                type="button"
-                key={aspect}
-                onClick={() => selectCameraAspect(aspect)}
-                disabled={controlsDisabled}
-              >
-                {aspect}
-              </button>
-            ))}
-          </div>
-          <div className="camera-lenses" aria-label="Pilih lensa">
-            {(['normal', 'wide'] as LensMode[]).map((mode) => (
-              <button
-                className={lensMode === mode ? 'active' : ''}
-                type="button"
-                key={mode}
-                onClick={() => setLensMode(mode)}
-                disabled={controlsDisabled}
-              >
-                {mode === 'normal' ? 'Normal' : 'Wide'}
-              </button>
-            ))}
-          </div>
         </div>
       </header>
 
