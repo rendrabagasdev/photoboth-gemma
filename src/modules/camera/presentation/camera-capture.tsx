@@ -99,8 +99,8 @@ export function CameraCapture({
   const [showGrid, setShowGrid] = useState(false)
   const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
   const [bright, setBright] = useState(false)
-  const [lensMode, setLensMode] = useState<LensMode>('wide')
-  const [cameraAspect, setCameraAspect] = useState<CameraAspect>('5:4')
+  const [lensMode] = useState<LensMode>('wide')
+  const [cameraAspect] = useState<CameraAspect>('5:4')
   const [slotCursor, setSlotCursor] = useState(0)
   const [acceptedPhotos, setAcceptedPhotos] = useState<string[]>(photos)
   const [captureComplete, setCaptureComplete] = useState(startInReview)
@@ -238,15 +238,6 @@ export function CameraCapture({
   const selectAccepted = (slot: number) => {
     setActiveSlot(slot)
     setSelectedPhotoSlot(slot)
-  }
-
-  const selectCameraAspect = (aspect: CameraAspect) => {
-    if (aspect === cameraAspect) return
-    streamRef.current?.getTracks().forEach((track) => track.stop())
-    streamRef.current = undefined
-    setCameraError(undefined)
-    setCameraState('requesting')
-    setCameraAspect(aspect)
   }
 
   const retryCamera = () => {
