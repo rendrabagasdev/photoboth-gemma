@@ -43,7 +43,7 @@ export async function composePhotoSheet(strip: Blob): Promise<Blob> {
     // Garis potong berada tepat di tengah lembar 4R, di antara kedua strip.
     context.save()
     context.beginPath()
-    context.lineWidth = 3
+    context.lineWidth = 1
     context.strokeStyle = 'rgba(35, 35, 35, 0.9)'
 
     context.moveTo(cutX, 0)
