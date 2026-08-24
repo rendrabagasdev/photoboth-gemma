@@ -1,6 +1,6 @@
 import { PRINT_HEIGHT, PRINT_WIDTH, TEMPLATE_HEIGHT, TEMPLATE_WIDTH } from '../domain/template-layout'
 
-const BLEED_PX = Math.round((4 / 25.4) * 300)
+const SAFE_MARGIN_PX = Math.round((4 / 25.4) * 300)
 
 function loadBlobImage(blob: Blob): Promise<{ image: HTMLImageElement; url: string }> {
   return new Promise((resolve, reject) => {
@@ -29,10 +29,16 @@ export async function composePhotoSheet(strip: Blob): Promise<Blob> {
 
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT)
-    const stripWidth = TEMPLATE_WIDTH + BLEED_PX * 2
-    const stripHeight = TEMPLATE_HEIGHT + BLEED_PX * 2
-    context.drawImage(image, -BLEED_PX, -BLEED_PX, stripWidth, stripHeight)
-    context.drawImage(image, PRINT_WIDTH - TEMPLATE_WIDTH - BLEED_PX, -BLEED_PX, stripWidth, stripHeight)
+    const availableWidth = PRINT_WIDTH - SAFE_MARGIN_PX * 2
+    const availableHeight = PRINT_HEIGHT - SAFE_MARGIN_PX * 2
+    const stripWidth = Math.min(
+      availableWidth / 2,
+      availableHeight * (TEMPLATE_WIDTH / TEMPLATE_HEIGHT),
+    )
+    const stripHeight = stripWidth * (TEMPLATE_HEIGHT / TEMPLATE_WIDTH)
+    const top = (PRINT_HEIGHT - stripHeight) / 2
+    context.drawImage(image, SAFE_MARGIN_PX, top, stripWidth, stripHeight)
+    context.drawImage(image, PRINT_WIDTH / 2, top, stripWidth, stripHeight)
 
     // Garis potong berada tepat di tengah lembar 4R, di antara kedua strip.
     context.save()
