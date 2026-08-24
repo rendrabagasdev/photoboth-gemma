@@ -8,6 +8,7 @@ const DEFAULT_MAX_FILE_MB = 20
 const DEFAULT_COMMAND_TIMEOUT_MS = 10_000
 const DEFAULT_REQUEST_ID_TTL_MS = 10 * 60 * 1_000
 const DEFAULT_MAX_CONCURRENT_JOBS = 1
+const DEFAULT_TEMP_FILE_TTL_MS = 10 * 60 * 1_000
 const HEALTH_CACHE_MS = 5_000
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
@@ -30,6 +31,7 @@ type PrintConfig = {
   maxFileBytes: number
   commandTimeoutMs: number
   requestIdTtlMs: number
+  tempFileTtlMs: number
   maxConcurrentJobs: number
   media?: string
   quality?: string
@@ -127,6 +129,7 @@ function printConfig(): PrintConfig {
     maxFileBytes: Math.floor(maxFileMb * 1024 * 1024),
     commandTimeoutMs: numberFromEnv(process.env.PRINT_COMMAND_TIMEOUT_MS, DEFAULT_COMMAND_TIMEOUT_MS),
     requestIdTtlMs: integerFromEnv(process.env.PRINT_REQUEST_TTL_MS, DEFAULT_REQUEST_ID_TTL_MS),
+    tempFileTtlMs: integerFromEnv(process.env.PRINT_TEMP_FILE_TTL_MS, DEFAULT_TEMP_FILE_TTL_MS),
     maxConcurrentJobs: integerFromEnv(process.env.MAX_CONCURRENT_PRINT_JOBS, DEFAULT_MAX_CONCURRENT_JOBS),
     media: safeOption(process.env.PRINT_MEDIA),
     quality: safeOption(process.env.PRINT_QUALITY),
@@ -339,6 +342,7 @@ export async function handlePrint(request: IncomingMessage, response: ServerResp
   let tempFile = ''
   let requestId = ''
   let requestStarted = false
+  let keepTempFile = false
   try {
     const config = printConfig()
     if (!config.printerName) {
@@ -396,6 +400,7 @@ export async function handlePrint(request: IncomingMessage, response: ServerResp
 
     const match = output.stdout.match(/request id is\s+(\S+)/i)
     const jobId = match?.[1]
+    keepTempFile = true
     updatePrintRequest(requestId, { status: 'queued', jobId })
     console.info(`[print] queued request=${requestId} job=${jobId ?? 'unknown'} printer=${config.printerName}`)
     sendJson(response, 202, {
@@ -425,9 +430,17 @@ export async function handlePrint(request: IncomingMessage, response: ServerResp
   } finally {
     if (requestStarted) activePrintRequests = Math.max(0, activePrintRequests - 1)
     if (tempFile) {
-      await unlink(tempFile).catch((error: unknown) => {
-        console.error('[print] File sementara gagal dihapus:', error)
-      })
+      const cleanup = async () => {
+        await unlink(tempFile).catch((error: unknown) => {
+          console.error('[print] File sementara gagal dihapus:', error)
+        })
+      }
+      if (keepTempFile) {
+        const timer = setTimeout(() => void cleanup(), printConfig().tempFileTtlMs)
+        timer.unref()
+      } else {
+        await cleanup()
+      }
     }
   }
 }
