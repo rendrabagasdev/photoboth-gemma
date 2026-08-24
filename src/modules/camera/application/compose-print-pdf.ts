@@ -1,7 +1,7 @@
 import { PRINT_HEIGHT, PRINT_WIDTH } from '../domain/template-layout'
 
-const PAGE_WIDTH_PT = (10.6 / 2.54) * 72
-const PAGE_HEIGHT_PT = (15.8 / 2.54) * 72
+const PAGE_WIDTH_PT = (10.2 / 2.54) * 72 // Sekitar 289.13 pt
+const PAGE_HEIGHT_PT = (15.2 / 2.54) * 72 // Sekitar 430.47 pt
 
 function encode(value: string): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(value)
