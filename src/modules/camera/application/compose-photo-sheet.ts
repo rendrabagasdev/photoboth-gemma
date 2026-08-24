@@ -1,6 +1,6 @@
 import { PRINT_HEIGHT, PRINT_WIDTH, TEMPLATE_HEIGHT, TEMPLATE_WIDTH } from '../domain/template-layout'
 
-const SAFE_MARGIN_PX = Math.round((4 / 25.4) * 300)
+const SAFE_MARGIN_PX = Math.round((2 / 25.4) * 300)
 
 function loadBlobImage(blob: Blob): Promise<{ image: HTMLImageElement; url: string }> {
   return new Promise((resolve, reject) => {
