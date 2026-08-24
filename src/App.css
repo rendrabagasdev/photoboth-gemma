@@ -2865,7 +2865,7 @@
   z-index: 1;
   inset: 0;
   display: block;
-  object-fit: fill;
+  object-fit: contain;
   pointer-events: none;
 }
 
@@ -2929,7 +2929,7 @@
   z-index: 2;
   inset: 0;
   display: block;
-  object-fit: fill;
+  object-fit: contain;
   pointer-events: none;
 }
 
