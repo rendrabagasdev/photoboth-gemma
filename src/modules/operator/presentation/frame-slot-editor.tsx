@@ -38,6 +38,7 @@ export function FrameSlotEditor({ image, slots, onChange }: FrameSlotEditorProps
   const historyRef = useRef<FramePhotoSlot[][]>([])
   const [selectedSlot, setSelectedSlot] = useState(0)
   const [snapEnabled, setSnapEnabled] = useState(true)
+  const [imageRatio, setImageRatio] = useState(1 / 3)
 
   const cloneSlots = (value: FramePhotoSlot[]): FramePhotoSlot[] => (
     value.map((slot) => ({ ...slot }))
@@ -147,7 +148,7 @@ export function FrameSlotEditor({ image, slots, onChange }: FrameSlotEditorProps
     const target = index + direction
     if (target < 0 || target >= slots.length) return
     const next = [...slots]
-    ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[index], next[target]] = [next[target], next[index]]
     commit(next)
     setSelectedSlot((current) => current === index ? target : current === target ? index : current)
   }
@@ -222,8 +223,21 @@ export function FrameSlotEditor({ image, slots, onChange }: FrameSlotEditorProps
       <div className="slot-editor-previews">
         <div className="slot-editor-preview-panel">
           <small>EDITOR AREA</small>
-          <div className={`slot-editor-canvas ${snapEnabled ? 'snap-on' : ''}`} ref={editorRef}>
-            {imageUrl && <img src={imageUrl} alt="Preview PNG frame" />}
+          <div
+            className={`slot-editor-canvas ${snapEnabled ? 'snap-on' : ''}`}
+            ref={editorRef}
+            style={{ aspectRatio: imageRatio }}
+          >
+            {imageUrl && (
+              <img
+                src={imageUrl}
+                alt="Preview PNG frame"
+                onLoad={(event) => {
+                  const { naturalWidth, naturalHeight } = event.currentTarget
+                  if (naturalWidth && naturalHeight) setImageRatio(naturalWidth / naturalHeight)
+                }}
+              />
+            )}
             {slots.map((slot, index) => (
               <div
                 className={`slot-editor-box ${selectedSlot === index ? 'selected' : ''}`}
@@ -255,7 +269,7 @@ export function FrameSlotEditor({ image, slots, onChange }: FrameSlotEditorProps
 
         <div className="slot-editor-preview-panel">
           <small>PREVIEW HASIL</small>
-          <div className="slot-result-preview" aria-label="Preview hasil frame">
+          <div className="slot-result-preview" aria-label="Preview hasil frame" style={{ aspectRatio: imageRatio }}>
             {imageUrl && <img src={imageUrl} alt="" />}
             {slots.map((slot, index) => (
               <div
