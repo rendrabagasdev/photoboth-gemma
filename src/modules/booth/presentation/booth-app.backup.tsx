@@ -5,7 +5,6 @@ import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import {
   defaultPhotoTransforms,
-  resolveConfiguredPhotoCount,
   resolveFrameSlots,
   type PhotoTransform,
 } from '../../camera/domain/template-layout'
@@ -68,23 +67,19 @@ const OPERATOR_TOKEN_KEY = 'tobfest-operator-token'
 
 function LandingPage({ onStart, onOperator }: { onStart: () => void; onOperator: () => void }) {
   return (
-    <main className="flex flex-col justify-between items-center h-screen">
-      <div className="flex flex-col justify-center items-center gap-5 mt-30">
-        <img src="picto_text.svg" alt="Logo Picto" className="w-40" />
-        <h2 className="text-4xl font-sns  uppercase tracking-widest"> Picture Box </h2>
-      </div>
-      <div className="flex justify-center items-center mb-30">
-        <button type="button" onClick={onStart} className="w-40 hover:scale-105 active:scale-105 transition-all">
-          <img src="button_start.svg" alt="Button Start" />
-        </button>
-      </div>
-      <div className="flex justify-center items-center gap-8 mb-20">
-        <img src="picto_text.svg" alt="Logo Picto" className="w-20" />
-        <p className='uppercase [word-spacing:0.9em] font-sns' >In Association With </p>
-        <button type="button" onClick={onOperator}>
-          <img src="tobfest_text.svg" alt="Logo Tobfest" className="w-20" />
-        </button>
-      </div>
+    <main className="landing-page">
+      <button
+        className="icon-button operator-entry"
+        type="button"
+        onClick={onOperator}
+        aria-label="Buka dashboard operator"
+      >
+        ⚙
+      </button>
+      <button className="public-start-button" type="button" onClick={onStart}>
+        <span aria-hidden="true">●</span>
+        Mulai Foto
+      </button>
     </main>
   )
 }
@@ -309,7 +304,6 @@ export function BoothApp({ container }: BoothAppProps) {
   const [session, setSession] = useState<BoothSession>()
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null)
   const [cameraSlots, setCameraSlots] = useState<number[]>([])
-  const [photoAssignments, setPhotoAssignments] = useState<number[]>([])
   const [photoTransforms, setPhotoTransforms] = useState<PhotoTransform[]>(
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
   )
@@ -318,7 +312,9 @@ export function BoothApp({ container }: BoothAppProps) {
   const selectedFrame = useMemo(() => {
     return frames.find((item) => item.id === selectedFrameId) ?? frames[0]
   }, [frames, selectedFrameId])
-  const requiredPhotoCount = resolveConfiguredPhotoCount()
+  const requiredPhotoCount = selectedFrame
+    ? resolveFrameSlots(selectedFrame).length
+    : 0
   const allCameraSlots = useMemo(
     () => Array.from({ length: requiredPhotoCount }, (_, index) => index),
     [requiredPhotoCount],
@@ -381,8 +377,6 @@ export function BoothApp({ container }: BoothAppProps) {
   const chooseFrame = (frame: PhotoFrame) => {
     setSelectedFrameId(frame.id)
     const slotCount = resolveFrameSlots(frame).length
-    const assignments = Array.from({ length: slotCount }, (_, index) => Math.min(index, resolveConfiguredPhotoCount() - 1))
-    setPhotoAssignments(assignments)
     setPhotoTransforms(Array.from({ length: slotCount }, (_, index) => ({
       ...(defaultPhotoTransforms[index] ?? defaultPhotoTransforms[0]),
     })))
@@ -408,12 +402,10 @@ export function BoothApp({ container }: BoothAppProps) {
       livePhotos: [],
       status: 'capturing',
     }
-    const assignments = Array.from({ length: resolveFrameSlots(selectedFrame).length }, (_, index) => Math.min(index, requiredPhotoCount - 1))
     await container.sessionService.save(capturingSession)
     setSession(capturingSession)
     setCameraSlots(allCameraSlots)
-    setPhotoAssignments(assignments)
-    setPhotoTransforms(Array.from({ length: requiredPhotoCount }, (_, index) => ({
+    setPhotoTransforms(Array.from({ length: allCameraSlots.length }, (_, index) => ({
       ...(defaultPhotoTransforms[index] ?? defaultPhotoTransforms[0]),
     })))
     setScreen('camera')
@@ -447,28 +439,15 @@ export function BoothApp({ container }: BoothAppProps) {
     ).every(Boolean)
     if (!session || !selectedFrame || !photosComplete) return
 
-    const frameSlotCount = resolveFrameSlots(selectedFrame).length
-    const finalPhotos = Array.from({ length: frameSlotCount }, (_, slotIndex) => {
-      const sourceIndex = photoAssignments[slotIndex] ?? slotIndex
-      return session.photos[sourceIndex] ?? session.photos[slotIndex] ?? ''
-    })
-    const finalLivePhotos = Array.from({ length: frameSlotCount }, (_, slotIndex) => {
-      const sourceIndex = photoAssignments[slotIndex] ?? slotIndex
-      return session.livePhotos[sourceIndex] ?? session.livePhotos[slotIndex]
-    })
-    const finalTransforms = Array.from({ length: frameSlotCount }, (_, slotIndex) =>
-      photoTransforms[slotIndex] ?? defaultPhotoTransforms[slotIndex] ?? defaultPhotoTransforms[0],
-    )
-
     persistSession((current) => ({ ...current, status: 'processing' }))
     try {
       const [finalImage, finalLive] = await Promise.all([
-        composePhotoStrip(finalPhotos, selectedFrame, finalTransforms),
+        composePhotoStrip(session.photos, selectedFrame, photoTransforms),
         composeLiveTemplate(
-          finalPhotos,
-          finalLivePhotos,
+          session.photos,
+          session.livePhotos ?? [],
           selectedFrame,
-          finalTransforms,
+          photoTransforms,
         ).catch(() => undefined),
       ])
       const completed: BoothSession = {
@@ -566,18 +545,6 @@ export function BoothApp({ container }: BoothAppProps) {
         photos={session?.photos ?? []}
         livePhotos={session?.livePhotos ?? []}
         transforms={photoTransforms}
-        photoAssignments={photoAssignments}
-        onPhotoAssignmentChange={(slot, photoIndex) => {
-          setPhotoAssignments((current) => {
-            const targetLength = resolveFrameSlots(selectedFrame).length
-            const next = current.length === targetLength
-              ? [...current]
-              : Array.from({ length: targetLength }, (_, index) => current[index] ?? index)
-
-            next[slot] = photoIndex
-            return next
-          })
-        }}
         selectedId={selectedFrame.id}
         onSelect={() => undefined}
         onTransformChange={changePhotoTransform}

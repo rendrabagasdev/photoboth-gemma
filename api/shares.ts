@@ -32,7 +32,9 @@ export default {
         id,
         sessionId,
         photoType: photo.type || 'image/jpeg',
-        liveType: live.type || 'video/mp4',
+        // Parameter codec dari MediaRecorder tidak ikut disimpan agar Blob dan
+        // header unduhan memakai tipe MP4 polos.
+        liveType: 'video/mp4',
         liveExtension,
         destroyTokenHash: hashToken(destroyToken),
         expiresAt: new Date(Date.now() + SHARE_LIFETIME_MS).toISOString(),

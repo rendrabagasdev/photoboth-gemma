@@ -1603,53 +1603,14 @@
 
 .template-editor-shell {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
 }
 
 .template-editor {
-  --template-accent: var(--coral);
-  --template-soft: #ffe5db;
-  width: min(100%, 250px, calc((100svh - 250px) / 3));
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border: 1px solid var(--theme-line);
-  border-radius: 16px;
-  background: var(--template-soft);
-  box-shadow: var(--theme-shadow-md);
+  min-width: 0;
 }
 
 .editable-photo-slot {
-  position: absolute;
-  z-index: 1;
-  overflow: hidden;
-  border: 2px solid transparent;
-  background: #d7d4cc;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-
-.editable-photo-slot.active {
-  z-index: 2;
-  border-color: var(--theme-surface);
-  box-shadow: 0 0 0 3px var(--template-accent);
-}
-
-.editable-photo-slot:active {
-  cursor: grabbing;
-}
-
-.editable-photo-slot>img {
-  position: absolute;
-  max-width: none;
-  object-fit: cover;
-  z-index: 0;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+  min-width: 0;
 }
 
 .live-photo-video {
@@ -1661,40 +1622,6 @@
   pointer-events: none;
 }
 
-.editor-live {
-  width: 30px;
-  height: 30px;
-  position: absolute;
-  z-index: 6;
-  left: 7px;
-  bottom: 7px;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid var(--theme-surface);
-  border-radius: 50%;
-  color: var(--coral);
-  background: rgba(23, 23, 17, 0.75);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.editor-retake {
-  width: 30px;
-  height: 30px;
-  position: absolute;
-  z-index: 6;
-  right: 7px;
-  bottom: 7px;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid var(--theme-surface);
-  border-radius: 50%;
-  color: var(--theme-on-dark);
-  background: rgba(23, 23, 17, 0.75);
-  font-size: 16px;
-  cursor: pointer;
-}
-
 .template-decoration,
 .full-template-overlay {
   width: 100%;
@@ -1704,10 +1631,6 @@
   z-index: 10;
   transform: translateZ(0);
   pointer-events: none;
-}
-
-.full-template-overlay {
-  object-fit: fill;
 }
 
 .editor-controls {

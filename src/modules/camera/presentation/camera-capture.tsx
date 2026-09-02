@@ -13,7 +13,7 @@ type CameraCaptureProps = {
 }
 
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
-type TimerSeconds = 3 | 5 | 10
+type TimerSeconds = 3
 type CameraFilter = 'normal' | 'warm' | 'mono'
 type LensMode = 'wide' | 'normal'
 type CameraAspect = '5:4'
@@ -260,25 +260,7 @@ export function CameraCapture({
   const controlsDisabled = cameraState !== 'ready' || captureComplete
 
   return (
-    <section className="camera-screen" aria-label="Ambil foto">
-      <header className="camera-topbar">
-        <button className="camera-back" type="button" onClick={onCancel} aria-label="Kembali">
-          ←
-        </button>
-        <div className="camera-timers" aria-label="Pilih timer">
-          {([3, 5, 10] as TimerSeconds[]).map((seconds) => (
-            <button
-              className={timerSeconds === seconds ? 'active' : ''}
-              type="button"
-              key={seconds}
-              onClick={() => setTimerSeconds(seconds)}
-              disabled={controlsDisabled}
-            >
-              <span aria-hidden="true">◷</span> {seconds}s
-            </button>
-          ))}
-        </div>
-      </header>
+    <section className="" aria-label="Ambil foto">
 
       <div className="camera-workspace">
         <aside className="camera-tools" aria-label="Pengaturan kamera">

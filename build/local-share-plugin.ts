@@ -79,7 +79,8 @@ async function handleLocalShare(request: IncomingMessage, response: ServerRespon
       photo: Buffer.from(await photo.arrayBuffer()),
       photoType: photo.type || 'image/jpeg',
       live: Buffer.from(await live.arrayBuffer()),
-      liveType: live.type || 'video/mp4',
+      // Sama seperti server produksi: tipe MP4 polos, tanpa parameter codec.
+      liveType: 'video/mp4',
       liveExtension,
       destroyTokenHash: hashToken(destroyToken),
       expiresAt: Date.now() + SHARE_LIFETIME_MS,

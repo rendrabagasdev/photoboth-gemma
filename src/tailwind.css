@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import "tailwindcss";
+
+@font-face {
+    font-family: "sns";
+    src: url("./assets/font/sns.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+}
+
+
+@theme {
+    --font-share-tech-mono: "Share Tech Mono", monospace;
+    --font-sns: "sns", sans-serif;
+
+    --color-app-bg: #070403;
+    --color-app-text: #D7D6D6;
+}
+
+body {
+    font-family: var(--font-share-tech-mono);
+    background-color: var(--color-app-bg);
+    color: var(--color-app-text);
+}

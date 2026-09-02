@@ -1,4 +1,5 @@
 import type { LivePhotoClip } from '../../sessions/domain/booth-session'
+import { normalizeLiveMimeType, fixMp4Duration } from '../domain/live-photo-media'
 
 const BEFORE_SHUTTER_MS = 2_000
 const AFTER_SHUTTER_MS = 2_000
@@ -29,6 +30,7 @@ export async function captureLivePhoto(
 ): Promise<LivePhotoCapture> {
   let recorder: MediaRecorder | undefined
   let stopped: Promise<void> | undefined
+  let recordingStartedAt: number | undefined
   const chunks: BlobPart[] = []
 
   if (stream && typeof MediaRecorder !== 'undefined') {
@@ -48,9 +50,11 @@ export async function captureLivePhoto(
         recorder.onerror = () => reject(new Error('Live Photo gagal direkam.'))
       })
       recorder.start()
+      recordingStartedAt = performance.now()
     } catch {
       recorder = undefined
       stopped = undefined
+      recordingStartedAt = undefined
     }
   }
 
@@ -66,22 +70,30 @@ export async function captureLivePhoto(
   if (!recorder || !stopped) return { photo }
 
   if (recorder.state === 'recording') recorder.stop()
+  // Panjang klip diukur dari jarak start–stop perekam, bukan dari jeda yang
+  // direncanakan, karena `wait` dapat meleset saat perangkat sedang sibuk.
+  const recordedMs = recordingStartedAt === undefined
+    ? undefined
+    : Math.round(performance.now() - recordingStartedAt)
   try {
     await stopped
   } catch {
     return { photo }
   }
 
-  const mimeType = recorder.mimeType || chunks.find((chunk) => chunk instanceof Blob)?.type || 'video/mp4'
-  const videoBlob = new Blob(chunks, { type: mimeType })
-  if (videoBlob.size === 0) return { photo }
+  const mimeType = normalizeLiveMimeType(
+    recorder.mimeType || chunks.find((chunk) => chunk instanceof Blob)?.type,
+  )
+  const rawBlob = new Blob(chunks, { type: mimeType })
+  if (rawBlob.size === 0) return { photo }
+  const videoBlob = await fixMp4Duration(rawBlob)
 
   return {
     photo,
     livePhoto: {
       videoBlob,
       mimeType,
-      durationMs: BEFORE_SHUTTER_MS + AFTER_SHUTTER_MS,
+      durationMs: recordedMs ?? BEFORE_SHUTTER_MS + AFTER_SHUTTER_MS,
     },
   }
 }

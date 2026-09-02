@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import tailwindcss from '@tailwindcss/vite'
 import { localSharePlugin } from './build/local-share-plugin.js'
 
 /** @type {import('vite').UserConfig} */
@@ -12,6 +13,7 @@ export default defineConfig({
   },
   plugins: [
     localSharePlugin(),
+    tailwindcss(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

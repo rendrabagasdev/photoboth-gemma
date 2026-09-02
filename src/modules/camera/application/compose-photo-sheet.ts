@@ -15,7 +15,32 @@ function loadBlobImage(blob: Blob): Promise<{ image: HTMLImageElement; url: stri
   })
 }
 
-export async function composePhotoSheet(strip: Blob): Promise<Blob> {
+function sheetBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error('Lembar 4R gagal dibuat.')),
+      'image/jpeg',
+      0.94,
+    )
+  })
+}
+
+/**
+ * `print` menyiapkan lembar untuk printer: strip diberi margin aman dan garis
+ * potong. `download` mengisi kanvas penuh tanpa margin maupun garis potong,
+ * karena hasil unduhan tidak pernah dipotong secara fisik.
+ */
+export type PhotoSheetVariant = 'print' | 'download'
+
+export type ComposePhotoSheetOptions = {
+  variant?: PhotoSheetVariant
+}
+
+export async function composePhotoSheet(
+  strip: Blob,
+  options: ComposePhotoSheetOptions = {},
+): Promise<Blob> {
+  const variant = options.variant ?? 'print'
   const canvas = document.createElement('canvas')
   canvas.width = PRINT_WIDTH
   canvas.height = PRINT_HEIGHT
@@ -24,11 +49,19 @@ export async function composePhotoSheet(strip: Blob): Promise<Blob> {
 
   const { image, url } = await loadBlobImage(strip)
   try {
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT)
+
+    if (variant === 'download') {
+      const stripWidth = PRINT_WIDTH / 2
+      context.drawImage(image, 0, 0, stripWidth, PRINT_HEIGHT)
+      context.drawImage(image, stripWidth, 0, stripWidth, PRINT_HEIGHT)
+      return await sheetBlob(canvas)
+    }
+
     const cutX = PRINT_WIDTH / 2
     const markLength = Math.round((6 / 25.4) * 300)
 
-    context.fillStyle = '#ffffff'
-    context.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT)
     const availableWidth = PRINT_WIDTH - SAFE_MARGIN_PX * 2
     const availableHeight = PRINT_HEIGHT - SAFE_MARGIN_PX * 2
     const stripWidth = Math.min(
@@ -58,11 +91,5 @@ export async function composePhotoSheet(strip: Blob): Promise<Blob> {
     URL.revokeObjectURL(url)
   }
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error('Lembar 4R gagal dibuat.')),
-      'image/jpeg',
-      0.94,
-    )
-  })
+  return sheetBlob(canvas)
 }

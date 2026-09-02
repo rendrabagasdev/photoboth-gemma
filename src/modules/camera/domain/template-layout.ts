@@ -114,8 +114,8 @@ export const templateLayoutOptions: TemplateLayout[] = [
     id: 'double',
     name: '2 Foto',
     slots: [
-      { x: 80, y: 70, width: 440, height: 550 },
-      { x: 80, y: 970, width: 440, height: 550 },
+      { x: 70, y: 90, width: 460, height: 610 },
+      { x: 70, y: 990, width: 460, height: 610 },
     ],
     brand: { x: 300, y: 1680, fontSize: 40, text: 'TOBFEST PHOTO BOOTH' },
     copyright: copyright(1735),
@@ -134,15 +134,87 @@ export function resolveTemplateSlots(layoutId?: PhotoLayoutId): TemplateSlot[] {
   return resolveTemplateLayout(layoutId).slots
 }
 
-export function resolveFrameSlots(frame: Pick<PhotoFrame, 'customSlots' | 'layoutId'>): TemplateSlot[] {
-  return frame.customSlots?.length ? frame.customSlots : resolveTemplateSlots(frame.layoutId)
+export function resolveFrameSlots(
+  frame: Pick<PhotoFrame, 'customSlots' | 'layoutId'>,
+  forcedCount?: number,
+): TemplateSlot[] {
+  const customSlots = frame.customSlots?.length ? frame.customSlots : undefined
+  if (customSlots) return customSlots
+
+  const configuredCount = Math.max(1, Number.isFinite(forcedCount) ? forcedCount ?? 4 : resolveConfiguredPhotoCount())
+
+  const layoutSlots = resolveTemplateSlots(frame.layoutId)
+  if (layoutSlots.length === configuredCount) {
+    return layoutSlots
+  }
+
+  return buildGeneratedGridSlots(configuredCount)
 }
 
-export const defaultPhotoTransforms: PhotoTransform[] = templateSlots.map(() => ({
-  offsetX: 0,
-  offsetY: 0,
-  scale: 1.12,
-}))
+export function resolveConfiguredPhotoCount(): number {
+  const raw = import.meta.env.VITE_PHOTO_COUNT ?? import.meta.env.PHOTO_BOOTH_SHOT_COUNT ?? '4'
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed)) return 4
+  return Math.min(6, Math.max(1, parsed))
+}
+
+function buildGeneratedGridSlots(count: number): TemplateSlot[] {
+  if (count <= 1) {
+    return [{ x: 60, y: 120, width: 480, height: 1560 }]
+  }
+
+  if (count === 2) {
+    return [
+      { x: 70, y: 90, width: 460, height: 610 },
+      { x: 70, y: 990, width: 460, height: 610 },
+    ]
+  }
+
+  if (count === 3) {
+    return [
+      { x: 110, y: 90, width: 380, height: 420 },
+      { x: 110, y: 560, width: 380, height: 420 },
+      { x: 110, y: 1030, width: 380, height: 420 },
+    ]
+  }
+
+  if (count === 4) {
+    return [
+      { x: 80, y: 110, width: 440, height: 520 },
+      { x: 80, y: 640, width: 440, height: 520 },
+      { x: 80, y: 1170, width: 440, height: 520 },
+      { x: 80, y: 1700, width: 440, height: 520 },
+    ]
+  }
+
+  if (count === 5) {
+    return [
+      { x: 80, y: 60, width: 440, height: 330 },
+      { x: 80, y: 430, width: 440, height: 330 },
+      { x: 80, y: 800, width: 440, height: 330 },
+      { x: 80, y: 1170, width: 440, height: 330 },
+      { x: 80, y: 1540, width: 440, height: 330 },
+    ]
+  }
+
+  return [
+    { x: 60, y: 50, width: 220, height: 260 },
+    { x: 320, y: 50, width: 220, height: 260 },
+    { x: 60, y: 330, width: 220, height: 260 },
+    { x: 320, y: 330, width: 220, height: 260 },
+    { x: 60, y: 610, width: 220, height: 260 },
+    { x: 320, y: 610, width: 220, height: 260 },
+  ]
+}
+
+export const defaultPhotoTransforms: PhotoTransform[] = Array.from(
+  { length: resolveConfiguredPhotoCount() },
+  () => ({
+    offsetX: 0,
+    offsetY: 0,
+    scale: 1.12,
+  }),
+)
 
 export function clampPhotoTransform(transform: PhotoTransform): PhotoTransform {
   const scale = Math.min(1.8, Math.max(1, transform.scale))

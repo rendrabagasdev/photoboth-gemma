@@ -16,13 +16,20 @@ export function FramePreview({ frame, selected = false, compact = false, photos 
 
   return (
     <div
-      className={`frame-artwork ${compact ? 'compact' : ''} ${selected ? 'selected' : ''}`}
-      style={{ '--frame-accent': frame.accent, '--frame-soft': frame.accentSoft } as React.CSSProperties}
+      className={[
+        'relative isolate bg-[#f1dfe6]',
+        'aspect-1/3 w-full',
+        compact ? 'compact-preview' : '',
+        selected ? 'ring-2 ring-[#D7D6D6]/70' : '',
+      ].join(' ')}
+      style={{
+        backgroundColor: frame.accentSoft ?? '#f1dfe6',
+      }}
     >
       {slots.map((slot, index) => (
         <div
-          className="mini-photo"
           key={index}
+          className="absolute z-[1] overflow-hidden bg-[linear-gradient(145deg,rgba(23,23,17,0.1),rgba(23,23,17,0.32))]"
           style={{
             left: `${(slot.x / TEMPLATE_WIDTH) * 100}%`,
             top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
@@ -32,11 +39,13 @@ export function FramePreview({ frame, selected = false, compact = false, photos 
             transform: `rotate(${slot.rotation ?? 0}deg)`,
           }}
         >
-          {photos[index] && <img src={photos[index]} alt="" />}
+          {photos[index] && <img src={photos[index]} alt="" className="h-full w-full object-cover" />}
         </div>
       ))}
-      {overlayUrl && <img src={overlayUrl} alt="" className="uploaded-overlay" />}
-      <TemplateDecoration frame={frame} />
+      {overlayUrl && <img src={overlayUrl} alt="" className="absolute inset-0 z-[2] h-full w-full object-fill" />}
+      <div className="absolute inset-0 z-0">
+        <TemplateDecoration frame={frame} />
+      </div>
     </div>
   )
 }

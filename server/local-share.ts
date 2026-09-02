@@ -146,7 +146,10 @@ async function remuxMp4(input: Buffer): Promise<Buffer<ArrayBufferLike> | undefi
 
     const output = await readFile(outputPath)
     return output.byteLength > 0 ? output : undefined
-  } catch {
+  } catch (error) {
+    // Tanpa remux, MP4 dari MediaRecorder tetap terfragmentasi: durasi terbaca 0
+    // dan moov berada di akhir berkas. Operator perlu tahu ffmpeg tidak jalan.
+    console.warn('[share] remux MP4 gagal, memakai berkas rekaman apa adanya.', error)
     return undefined
   } finally {
     await rm(tempDirectory, { recursive: true, force: true })
@@ -190,14 +193,11 @@ async function createShare(
     ensureShareCapacity(sizeBytes)
 
     let liveBuffer: Buffer<ArrayBufferLike> = Buffer.from(await live.arrayBuffer())
-    let liveType = live.type || 'video/mp4'
-    if (liveType.includes('mp4')) {
-      const remuxed = await remuxMp4(liveBuffer)
-      if (remuxed) {
-        liveBuffer = remuxed
-        liveType = 'video/mp4'
-      }
-    }
+    // Upload sudah dipastikan MP4 di atas. Parameter codec bawaan MediaRecorder
+    // (`video/mp4;codecs=h264`) sengaja dibuang agar header unduhan tetap polos.
+    const liveType = 'video/mp4'
+    const remuxed = await remuxMp4(liveBuffer)
+    if (remuxed) liveBuffer = remuxed
 
     shares.set(id, {
       photo: Buffer.from(await photo.arrayBuffer()),

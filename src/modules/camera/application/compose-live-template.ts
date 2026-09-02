@@ -12,6 +12,7 @@ import {
 } from '../domain/template-layout'
 import { drawFrameDecorations } from './draw-frame-decoration'
 import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
+import { fixMp4Duration, normalizeLiveMimeType, withLiveMimeType } from '../domain/live-photo-media'
 
 const OUTPUT_SCALE = 0.5
 const LIVE_DURATION_MS = 4_000
@@ -57,8 +58,9 @@ export async function composeLiveTemplate(
 ): Promise<Blob> {
   const layout = resolveTemplateLayout(frame.layoutId)
   const slots = resolveFrameSlots(frame)
-  const fallback = livePhotos.find((clip) => clip?.videoBlob.size)?.videoBlob
-  if (!fallback) throw new Error('Live Photo belum tersedia.')
+  const fallbackSource = livePhotos.find((clip) => clip?.videoBlob.size)?.videoBlob
+  if (!fallbackSource) throw new Error('Live Photo belum tersedia.')
+  const fallback = withLiveMimeType(fallbackSource)
 
   const canvas = document.createElement('canvas')
   canvas.width = PRINT_WIDTH * OUTPUT_SCALE
@@ -199,7 +201,8 @@ export async function composeLiveTemplate(
     })
     recorder.stop()
     await stopped
-    return chunks.length ? new Blob(chunks, { type: mimeType }) : fallback
+    if (!chunks.length) return fallback
+    return fixMp4Duration(new Blob(chunks, { type: normalizeLiveMimeType(mimeType) }))
   } catch {
     if (recorder.state === 'recording') recorder.stop()
     return fallback

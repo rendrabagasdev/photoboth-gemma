@@ -1,4 +1,5 @@
-import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { motion } from 'framer-motion'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PhotoFrame } from '../../frames/domain/photo-frame'
 import type { LivePhotoClip } from '../../sessions/domain/booth-session'
 import { useObjectUrl } from '../../../shared/presentation/use-object-url'
@@ -16,6 +17,8 @@ type PhotoTemplateEditorProps = {
   livePhotos: Array<LivePhotoClip | undefined>
   frame: PhotoFrame
   transforms: PhotoTransform[]
+  photoAssignments?: number[]
+  onPhotoAssignmentChange?: (slot: number, photoIndex: number) => void
   onTransformChange: (slot: number, transform: PhotoTransform) => void
   onRetake: (slot: number) => void
 }
@@ -77,14 +80,86 @@ export function PhotoTemplateEditor({
   livePhotos,
   frame,
   transforms,
+  photoAssignments,
+  onPhotoAssignmentChange,
   onTransformChange,
   onRetake,
 }: PhotoTemplateEditorProps) {
   const dragRef = useRef<DragState | undefined>(undefined)
+  const slotRefs = useRef<Array<HTMLDivElement | null>>([])
   const [activeSlot, setActiveSlot] = useState(0)
   const [playingSlot, setPlayingSlot] = useState<number>()
+  const [hoverSlot, setHoverSlot] = useState<number | null>(null)
+  const [draggedPhoto, setDraggedPhoto] = useState<{ pointerId: number; photoIndex: number; x: number; y: number } | undefined>()
   const overlayUrl = useObjectUrl(frame.imageBlob)
   const slots = resolveFrameSlots(frame)
+  const effectiveAssignments = photoAssignments && photoAssignments.length === slots.length
+    ? photoAssignments
+    : Array.from({ length: slots.length }, (_, index) => Math.min(index, Math.max(photos.length - 1, 0)))
+
+  useEffect(() => {
+    if (!draggedPhoto) return
+
+    const handleMove = (event: PointerEvent) => {
+      setDraggedPhoto((current) => current ? { ...current, x: event.clientX, y: event.clientY } : current)
+
+      const nextHover = slots.reduce<number | null>((match, _, index) => {
+        const element = slotRefs.current[index]
+        if (!element) return match
+        const rect = element.getBoundingClientRect()
+        if (
+          event.clientX >= rect.left
+          && event.clientX <= rect.right
+          && event.clientY >= rect.top
+          && event.clientY <= rect.bottom
+        ) {
+          return index
+        }
+        return match
+      }, null)
+
+      setHoverSlot(nextHover)
+    }
+
+    const handleUp = (event: PointerEvent) => {
+      const slotIndex = slots.reduce<number | null>((match, _, index) => {
+        const element = slotRefs.current[index]
+        if (!element) return match
+        const rect = element.getBoundingClientRect()
+        if (
+          event.clientX >= rect.left
+          && event.clientX <= rect.right
+          && event.clientY >= rect.top
+          && event.clientY <= rect.bottom
+        ) {
+          return index
+        }
+        return match
+      }, null)
+
+      if (slotIndex !== null && onPhotoAssignmentChange) {
+        onPhotoAssignmentChange(slotIndex, draggedPhoto.photoIndex)
+        setActiveSlot(slotIndex)
+      }
+
+      setDraggedPhoto(undefined)
+      setHoverSlot(null)
+    }
+
+    const handleCancel = () => {
+      setDraggedPhoto(undefined)
+      setHoverSlot(null)
+    }
+
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    window.addEventListener('pointercancel', handleCancel)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+      window.removeEventListener('pointercancel', handleCancel)
+    }
+  }, [draggedPhoto, onPhotoAssignmentChange, slots])
 
   const beginDrag = (slot: number, event: ReactPointerEvent<HTMLDivElement>) => {
     const transform = transforms[slot]
@@ -112,14 +187,13 @@ export function PhotoTemplateEditor({
     const deltaY = event.clientY - drag.startY
     const localX = Math.cos(radians) * deltaX + Math.sin(radians) * deltaY
     const localY = -Math.sin(radians) * deltaX + Math.cos(radians) * deltaY
-    onTransformChange(
-      drag.slot,
-      clampPhotoTransform({
-        ...drag.origin,
-        offsetX: drag.origin.offsetX + localX / event.currentTarget.clientWidth,
-        offsetY: drag.origin.offsetY + localY / event.currentTarget.clientHeight,
-      }),
-    )
+    const nextScale = clampPhotoTransform({
+      ...drag.origin,
+      scale: drag.origin.scale + (deltaY / 280),
+      offsetX: drag.origin.offsetX + localX / event.currentTarget.clientWidth,
+      offsetY: drag.origin.offsetY + localY / event.currentTarget.clientHeight,
+    })
+    onTransformChange(drag.slot, nextScale)
   }
 
   const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -128,16 +202,28 @@ export function PhotoTemplateEditor({
     }
   }
 
-  const zoom = (amount: number) => {
-    const transform = transforms[activeSlot]
-    if (!transform) return
-    onTransformChange(activeSlot, clampPhotoTransform({ ...transform, scale: transform.scale + amount }))
+  const beginPhotoDrag = (photoIndex: number, event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setDraggedPhoto({ pointerId: event.pointerId, photoIndex, x: event.clientX, y: event.clientY })
+    setHoverSlot(null)
+  }
+
+  const releasePhotoDrag = (event: ReactPointerEvent<HTMLDivElement | HTMLButtonElement>) => {
+    if (!draggedPhoto || draggedPhoto.pointerId !== event.pointerId) return
+    setHoveredPhoto(null)
+  }
+
+  const setHoveredPhoto = (next: number | null) => {
+    setHoverSlot(next)
   }
 
   return (
-    <div className="template-editor-shell">
-      <div
-        className="template-editor"
+    <div className="flex min-w-0 flex-col items-center gap-[18px]">
+      <motion.div
+        layout
+        transition={{ type: 'spring', stiffness: 320, damping: 24, mass: 0.6 }}
+        className="relative isolate w-[min(100%,250px)] overflow-hidden rounded-[16px] border border-[var(--theme-line)] bg-[var(--template-soft)] shadow-[var(--theme-shadow-md)]"
         style={{
           '--template-accent': frame.accent,
           '--template-soft': frame.accentSoft,
@@ -146,7 +232,8 @@ export function PhotoTemplateEditor({
       >
         {slots.map((slot, index) => {
           const transform = transforms[index]
-          const photo = photos[index]
+          const sourcePhotoIndex = effectiveAssignments[index] ?? index
+          const photo = photos[sourcePhotoIndex]
           if (!transform || !photo) return null
           const mediaStyle = {
             width: `${transform.scale * 100}%`,
@@ -154,11 +241,19 @@ export function PhotoTemplateEditor({
             left: `${50 + transform.offsetX * 100}%`,
             top: `${50 + transform.offsetY * 100}%`,
           }
+          const isActive = activeSlot === index
+          const isTargeting = hoverSlot === index
 
           return (
-            <div
-              className={`editable-photo-slot ${activeSlot === index ? 'active' : ''}`}
+            <motion.div
+              layout
               key={index}
+              data-slot-index={index}
+              ref={(element) => {
+                slotRefs.current[index] = element
+              }}
+              className={`absolute z-[1] overflow-hidden rounded-xl border-2 bg-stone-300/80 shadow-sm select-none touch-none ${isActive ? 'z-[2] border-white shadow-[0_0_0_3px_var(--template-accent)]' : 'border-transparent'
+                } ${isTargeting ? 'border-[var(--template-accent)] shadow-[0_0_0_4px_rgba(255,106,110,0.3)]' : ''}`}
               style={{
                 left: `${(slot.x / TEMPLATE_WIDTH) * 100}%`,
                 top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
@@ -166,11 +261,24 @@ export function PhotoTemplateEditor({
                 height: `${(slot.height / TEMPLATE_HEIGHT) * 100}%`,
                 borderRadius: `${((slot.borderRadius ?? 0) / slot.width) * 100}% / ${((slot.borderRadius ?? 0) / slot.height) * 100}%`,
                 transform: `rotate(${slot.rotation ?? 0}deg)`,
+                cursor: 'grab',
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
               }}
+              animate={{ scale: isTargeting ? 1.01 : 1 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 24 }}
+              whileTap={{ scale: 0.99 }}
               onPointerDown={(event) => beginDrag(index, event)}
               onPointerMove={movePhoto}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
+              onPointerUp={(event) => {
+                endDrag(event)
+                releasePhotoDrag(event)
+              }}
+              onPointerCancel={(event) => {
+                endDrag(event)
+                releasePhotoDrag(event)
+              }}
               role="group"
               aria-label={`Atur posisi foto ${index + 1}`}
             >
@@ -178,38 +286,88 @@ export function PhotoTemplateEditor({
                 src={photo}
                 alt={`Foto ${index + 1}`}
                 draggable={false}
-                style={mediaStyle}
+                style={{
+                  ...mediaStyle,
+                  position: 'absolute',
+                  maxWidth: 'none',
+                  objectFit: 'cover',
+                  zIndex: 0,
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                }}
               />
               <LivePhotoLayer
-                clip={livePhotos[index]}
-                index={index}
+                clip={livePhotos[sourcePhotoIndex]}
+                index={sourcePhotoIndex}
                 playing={playingSlot === index}
                 mediaStyle={mediaStyle}
                 onToggle={() => setPlayingSlot(playingSlot === index ? undefined : index)}
                 onEnded={() => setPlayingSlot(undefined)}
               />
-              <button
-                className="editor-retake"
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.96 }}
+                className="absolute bottom-[7px] right-[7px] z-[6] grid h-[30px] w-[30px] place-items-center rounded-full border-[1.5px] border-white/80 bg-[rgba(23,23,17,0.75)] text-base text-white"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => onRetake(index)}
                 aria-label={`Ambil ulang foto ${index + 1}`}
               >
                 ↻
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )
         })}
 
-        {overlayUrl && <img className="full-template-overlay" src={overlayUrl} alt="" />}
+        {overlayUrl && <img className="pointer-events-none absolute inset-0 z-[10] h-full w-full" src={overlayUrl} alt="" />}
         <TemplateDecoration frame={frame} />
-      </div>
+      </motion.div>
 
-      <div className="editor-controls">
-        <button type="button" onClick={() => zoom(-0.08)} aria-label="Perkecil foto">−</button>
-        <span>{activeSlot + 1}</span>
-        <button type="button" onClick={() => zoom(0.08)} aria-label="Perbesar foto">＋</button>
-      </div>
+      <motion.div layout className="flex w-[min(100%,320px)] gap-[10px] overflow-x-auto pb-[6px] pt-[2px]" aria-label="Daftar foto yang diambil">
+        {Array.from({ length: Math.min(photos.length, 4) }, (_, photoIndex) => (
+          <motion.button
+            key={photoIndex}
+            type="button"
+            className="group relative h-[90px] w-[76px] shrink-0 touch-none select-none overflow-hidden rounded-xl border border-[var(--theme-line)] bg-[var(--theme-surface)] shadow-[var(--theme-shadow-sm)]"
+            style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
+            whileHover={{ y: -2, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onContextMenu={(event) => event.preventDefault()}
+            onPointerDown={(event) => beginPhotoDrag(photoIndex, event)}
+            onPointerMove={(event) => {
+              if (draggedPhoto?.pointerId === event.pointerId) {
+                setDraggedPhoto((current) => current ? { ...current, x: event.clientX, y: event.clientY } : current)
+              }
+            }}
+            onPointerUp={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onPointerCancel={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            aria-label={`Pilih foto ${photoIndex + 1}`}
+          >
+            <img src={photos[photoIndex]} alt={`Foto ${photoIndex + 1}`} className="h-full w-full object-cover" />
+            <span className="absolute bottom-[6px] right-[6px] grid h-5 min-w-5 place-items-center rounded-full bg-[rgba(23,23,17,0.75)] px-1 text-[10px] font-extrabold text-white">
+              {photoIndex + 1}
+            </span>
+          </motion.button>
+        ))}
+      </motion.div>
+
+      {draggedPhoto && (
+        <motion.div
+          initial={{ opacity: 0.8, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.12, ease: 'easeOut' }}
+          className="pointer-events-none fixed left-0 top-0 z-50 h-[90px] w-[76px] touch-none select-none overflow-hidden rounded-xl shadow-[0_18px_28px_rgba(17,17,17,0.25)]"
+          style={{ left: draggedPhoto.x, top: draggedPhoto.y, transform: 'translate(-50%, -50%)', touchAction: 'none', WebkitUserSelect: 'none' }}
+          aria-hidden="true"
+        >
+          <img src={photos[draggedPhoto.photoIndex]} alt="" className="h-full w-full object-cover" />
+        </motion.div>
+      )}
     </div>
   )
 }
