@@ -1,11 +1,26 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-// import './index.css'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+
+import './index.css'
 import './tailwind.css'
-import App from './App.tsx'
+
+import Home from './App'
+import Process from './Process'
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Home />,
+  },
+  {
+    path: '/process',
+    element: <Process />,
+  },
+])
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <RouterProvider router={router} />
   </StrictMode>,
 )

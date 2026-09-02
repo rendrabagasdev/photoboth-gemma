@@ -57,16 +57,11 @@ export function FramePicker({
     <main className="min-h-screen px-10 py-14">
       <section className="mx-auto max-w-7xl">
 
-        {mode === 'select' && (
-          <div className=" text-center">
-            <h2 className="font-sns text-3xl uppercase leading-none tracking-tight] ">
-              Slide and choose your frame first
-            </h2>
-          </div>
-        )}
 
         {mode === 'edit' && selectedFrame && (
-          <div className="mx-auto ">
+          <div className="font-sns flex flex-col w-full justify-center items-center " >
+            <h1 className="text-3xl tracking-[0.11em] mt-10" > LET'S CHOICE. IT FEELS SO NICE TO BE YOURS! </h1>
+
             <PhotoTemplateEditor
               photos={photos}
               livePhotos={livePhotos}
@@ -77,11 +72,26 @@ export function FramePicker({
               onTransformChange={onTransformChange}
               onRetake={onRetake}
             />
+
+            <div className="flex w-full justify-center gap-4">
+              <button type="button" onClick={onContinue} className="mt-8 w-40 transition-all hover:scale-110 active:scale-110">
+                <img src="button_print.svg" alt="PRINT" />
+              </button>
+            </div>
+
           </div>
         )}
 
         {mode === 'select' && (
-          <div className="overflow-x-auto flex-col overflow-y-hidden pb-3 [-ms-overflow-style:none] scrollbar-width:none [&::-webkit-scrollbar]:hidden pt-10 pb-14 ">
+          <div className=" text-center">
+            <h2 className="font-sns text-3xl uppercase tracking-[0.11em] mt-8 ">
+              Slide and choose your frame first
+            </h2>
+          </div>
+        )}
+
+        {mode === 'select' && (
+          <div className="overflow-x-auto flex-col overflow-y-hidden [-ms-overflow-style:none] scrollbar-width:none [&::-webkit-scrollbar]:hidden pt-10 pb-14 ">
             <motion.div layout className="flex min-w-max items-end justify-start gap-5 sm:gap-7 lg:gap-10">
               {frames.map((frame) => {
                 const selected = selectedId === frame.id
@@ -107,7 +117,7 @@ export function FramePicker({
                     }}
                     className="group relative shrink-0 overflow-hidden border-0 bg-transparent p-0"
                   >
-                    <div className="w-56">
+                    <div className="w-70">
                       <FramePreview frame={frame} compact photos={photos} />
                     </div>
                   </motion.button>
@@ -123,9 +133,7 @@ export function FramePicker({
             </button>
           </div>
         )}
-
-
       </section>
-    </main>
+    </main >
   )
 }

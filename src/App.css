@@ -1233,12 +1233,9 @@
 }
 
 .camera-lens-normal {
-  scale: 1.14;
-}
-
-.camera-lens-wide {
   scale: 1;
 }
+
 
 .camera-filter-warm {
   --camera-filter: sepia(0.2) saturate(1.22) contrast(1.04);

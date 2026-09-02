@@ -89,12 +89,23 @@ function LandingPage({ onStart, onOperator }: { onStart: () => void; onOperator:
   )
 }
 
-function ProcessingPage() {
+function ProcessingPage({ image }: { image?: Blob }) {
+  const imageUrl = useObjectUrl(image)
+
   return (
-    <main className="processing-page">
-      <div className="processing-art"><span /><span /><span /><strong>✦</strong></div>
-      <h1>Memproses…</h1>
-      <div className="processing-line"><i /></div>
+    <main className="relative flex h-screen w-screen flex-col items-center gap-4 overflow-hidden bg-[url('/bg_print.png')] bg-cover bg-center bg-no-repeat">
+      <img
+        src="/bg_fragment.svg"
+        alt=""
+        className="absolute left-0 top-0 z-20 w-full origin-top scale-[1.124] object-cover"
+      />
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt="Hasil foto sedang diproses"
+          className="process_container absolute top-55 w-119"
+        />
+      )}
     </main>
   )
 }
@@ -313,6 +324,7 @@ export function BoothApp({ container }: BoothAppProps) {
   const [photoTransforms, setPhotoTransforms] = useState<PhotoTransform[]>(
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
   )
+  const [processingImage, setProcessingImage] = useState<Blob>()
   const [fatalError, setFatalError] = useState('')
 
   const selectedFrame = useMemo(() => {
@@ -400,7 +412,7 @@ export function BoothApp({ container }: BoothAppProps) {
   }
 
   const beginCapture = async () => {
-    if (!session || !selectedFrame || allCameraSlots.length === 0) return
+    if (!session || !selectedFrame) return
     const capturingSession: BoothSession = {
       ...session,
       frameId: selectedFrame.id,
@@ -461,16 +473,17 @@ export function BoothApp({ container }: BoothAppProps) {
     )
 
     persistSession((current) => ({ ...current, status: 'processing' }))
+    setScreen('processing')
     try {
-      const [finalImage, finalLive] = await Promise.all([
-        composePhotoStrip(finalPhotos, selectedFrame, finalTransforms),
-        composeLiveTemplate(
-          finalPhotos,
-          finalLivePhotos,
-          selectedFrame,
-          finalTransforms,
-        ).catch(() => undefined),
-      ])
+      const finalImage = await composePhotoStrip(finalPhotos, selectedFrame, finalTransforms)
+      setProcessingImage(finalImage)
+      const finalLive = await composeLiveTemplate(
+        finalPhotos,
+        finalLivePhotos,
+        selectedFrame,
+        finalTransforms,
+      ).catch(() => undefined)
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 7_000))
       const completed: BoothSession = {
         ...session,
         frameId: selectedFrame.id,
@@ -492,6 +505,7 @@ export function BoothApp({ container }: BoothAppProps) {
 
   const reset = () => {
     setSession(undefined)
+    setProcessingImage(undefined)
     setCameraSlots([])
     setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
     setFatalError('')
@@ -613,7 +627,7 @@ export function BoothApp({ container }: BoothAppProps) {
     )
   }
 
-  if (screen === 'processing') return <ProcessingPage />
+  if (screen === 'processing') return <ProcessingPage image={processingImage} />
 
   if (screen === 'result' && session?.finalImage) {
     return <ResultPage result={session.finalImage} liveResult={session.finalLive} sessionId={session.id} shareService={container.shareService} onDone={reset} />

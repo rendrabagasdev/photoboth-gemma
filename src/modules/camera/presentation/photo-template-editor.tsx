@@ -83,7 +83,6 @@ export function PhotoTemplateEditor({
   photoAssignments,
   onPhotoAssignmentChange,
   onTransformChange,
-  onRetake,
 }: PhotoTemplateEditorProps) {
   const dragRef = useRef<DragState | undefined>(undefined)
   const slotRefs = useRef<Array<HTMLDivElement | null>>([])
@@ -219,11 +218,11 @@ export function PhotoTemplateEditor({
   }
 
   return (
-    <div className="flex min-w-0 flex-col items-center gap-[18px]">
+    <div className="flex justify-between items-center gap-8 h-[90%] w-[90%] mt-10">
       <motion.div
         layout
         transition={{ type: 'spring', stiffness: 320, damping: 24, mass: 0.6 }}
-        className="relative isolate w-[min(100%,250px)] overflow-hidden rounded-[16px] border border-[var(--theme-line)] bg-[var(--template-soft)] shadow-[var(--theme-shadow-md)]"
+        className="relative flex justify-between isolate overflow-hidden w-110"
         style={{
           '--template-accent': frame.accent,
           '--template-soft': frame.accentSoft,
@@ -252,14 +251,13 @@ export function PhotoTemplateEditor({
               ref={(element) => {
                 slotRefs.current[index] = element
               }}
-              className={`absolute z-[1] overflow-hidden rounded-xl border-2 bg-stone-300/80 shadow-sm select-none touch-none ${isActive ? 'z-[2] border-white shadow-[0_0_0_3px_var(--template-accent)]' : 'border-transparent'
-                } ${isTargeting ? 'border-[var(--template-accent)] shadow-[0_0_0_4px_rgba(255,106,110,0.3)]' : ''}`}
+              className={`absolute z-1 overflow-hidden shadow-sm select-none touch-none ${isActive ? 'z-2  ' : 'border-transparent'
+                } ${isTargeting ? 'border-[var(--template-accent)] ' : ''}`}
               style={{
                 left: `${(slot.x / TEMPLATE_WIDTH) * 100}%`,
                 top: `${(slot.y / TEMPLATE_HEIGHT) * 100}%`,
                 width: `${(slot.width / TEMPLATE_WIDTH) * 100}%`,
                 height: `${(slot.height / TEMPLATE_HEIGHT) * 100}%`,
-                borderRadius: `${((slot.borderRadius ?? 0) / slot.width) * 100}% / ${((slot.borderRadius ?? 0) / slot.height) * 100}%`,
                 transform: `rotate(${slot.rotation ?? 0}deg)`,
                 cursor: 'grab',
                 touchAction: 'none',
@@ -304,16 +302,6 @@ export function PhotoTemplateEditor({
                 onToggle={() => setPlayingSlot(playingSlot === index ? undefined : index)}
                 onEnded={() => setPlayingSlot(undefined)}
               />
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.96 }}
-                className="absolute bottom-[7px] right-[7px] z-[6] grid h-[30px] w-[30px] place-items-center rounded-full border-[1.5px] border-white/80 bg-[rgba(23,23,17,0.75)] text-base text-white"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => onRetake(index)}
-                aria-label={`Ambil ulang foto ${index + 1}`}
-              >
-                ↻
-              </motion.button>
             </motion.div>
           )
         })}
@@ -322,12 +310,12 @@ export function PhotoTemplateEditor({
         <TemplateDecoration frame={frame} />
       </motion.div>
 
-      <motion.div layout className="flex w-[min(100%,320px)] gap-[10px] overflow-x-auto pb-[6px] pt-[2px]" aria-label="Daftar foto yang diambil">
+      <motion.div layout className="flex flex-col w-full gap-6 overflow-x-auto items-end" aria-label="Daftar foto yang diambil">
         {Array.from({ length: Math.min(photos.length, 4) }, (_, photoIndex) => (
           <motion.button
             key={photoIndex}
             type="button"
-            className="group relative h-[90px] w-[76px] shrink-0 touch-none select-none overflow-hidden rounded-xl border border-[var(--theme-line)] bg-[var(--theme-surface)] shadow-[var(--theme-shadow-sm)]"
+            className="group relative w-[228px] h-[182.4px] shrink-0 touch-none select-none overflow-hidden"
             style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
             whileHover={{ y: -2, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -349,7 +337,7 @@ export function PhotoTemplateEditor({
             aria-label={`Pilih foto ${photoIndex + 1}`}
           >
             <img src={photos[photoIndex]} alt={`Foto ${photoIndex + 1}`} className="h-full w-full object-cover" />
-            <span className="absolute bottom-[6px] right-[6px] grid h-5 min-w-5 place-items-center rounded-full bg-[rgba(23,23,17,0.75)] px-1 text-[10px] font-extrabold text-white">
+            <span className="absolute bottom-[6px] right-[6px] grid h-5 min-w-5 place-items-center  px-1 text-[10px] font-extrabold text-white">
               {photoIndex + 1}
             </span>
           </motion.button>
@@ -361,7 +349,7 @@ export function PhotoTemplateEditor({
           initial={{ opacity: 0.8, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.12, ease: 'easeOut' }}
-          className="pointer-events-none fixed left-0 top-0 z-50 h-[90px] w-[76px] touch-none select-none overflow-hidden rounded-xl shadow-[0_18px_28px_rgba(17,17,17,0.25)]"
+          className="pointer-events-none fixed left-0 top-0 z-50 h-[90px] w-[76px] touch-none select-none overflow-hidden  "
           style={{ left: draggedPhoto.x, top: draggedPhoto.y, transform: 'translate(-50%, -50%)', touchAction: 'none', WebkitUserSelect: 'none' }}
           aria-hidden="true"
         >

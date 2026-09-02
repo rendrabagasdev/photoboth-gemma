@@ -6,7 +6,7 @@ import type { LivePhotoClip } from '../../sessions/domain/booth-session'
 import { resolveFrameSlots } from '../../camera/domain/template-layout'
 
 type FramePickerProps = {
-  mode: 'select' | 'edit'
+  mode: 'select' | 'edit' | 'process'
   frames: PhotoFrame[]
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>

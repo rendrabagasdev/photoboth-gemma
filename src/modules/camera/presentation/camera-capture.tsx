@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import Webcam from 'react-webcam'
 import { captureLivePhoto, type LivePhotoCapture } from '../application/capture-live-photo'
@@ -13,7 +14,7 @@ type CameraCaptureProps = {
 }
 
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
-type TimerSeconds = 3
+type TimerSeconds = 5
 type CameraFilter = 'normal' | 'warm' | 'mono'
 type LensMode = 'wide' | 'normal'
 type CameraAspect = '5:4'
@@ -95,10 +96,8 @@ export function CameraCapture({
   const [cameraState, setCameraState] = useState<CameraState>('requesting')
   const [countdown, setCountdown] = useState(3)
   const [activeSlot, setActiveSlot] = useState(slots[0] ?? 0)
-  const [timerSeconds, setTimerSeconds] = useState<TimerSeconds>(3)
-  const [showGrid, setShowGrid] = useState(false)
+  const [timerSeconds] = useState<TimerSeconds>(5)
   const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
-  const [bright, setBright] = useState(false)
   const [lensMode] = useState<LensMode>('wide')
   const [cameraAspect] = useState<CameraAspect>('5:4')
   const [slotCursor, setSlotCursor] = useState(0)
@@ -114,6 +113,19 @@ export function CameraCapture({
       activeRef.current = false
     }
   }, [])
+
+  const getFilterStyle = () => cameraFilter === 'warm'
+    ? 'sepia(0.2) saturate(1.22) contrast(1.04)'
+    : cameraFilter === 'mono'
+      ? 'grayscale(1) contrast(1.08)'
+      : 'none'
+
+  useEffect(() => {
+    const video = webcamRef.current?.video
+    if (!video) return
+
+    video.style.filter = getFilterStyle()
+  }, [cameraFilter])
 
   const captureStill = () => {
     const video = webcamRef.current?.video
@@ -144,7 +156,6 @@ export function CameraCapture({
       : cameraFilter === 'mono'
         ? ['grayscale(1)', 'contrast(1.08)']
         : []
-    filters.push(`brightness(${bright ? 1.2 : 1})`)
     context.filter = filters.join(' ')
     context.translate(outputWidth, 0)
     context.scale(-1, 1)
@@ -231,10 +242,6 @@ export function CameraCapture({
     }
   }
 
-  const cycleFilter = () => {
-    setCameraFilter((current) => current === 'normal' ? 'warm' : current === 'warm' ? 'mono' : 'normal')
-  }
-
   const selectAccepted = (slot: number) => {
     setActiveSlot(slot)
     setSelectedPhotoSlot(slot)
@@ -257,129 +264,180 @@ export function CameraCapture({
     void runCapture({ slot, cursor: 0, stopAfterCapture: true, previewAfterCapture: true })
   }
 
-  const controlsDisabled = cameraState !== 'ready' || captureComplete
-
   return (
-    <section className="" aria-label="Ambil foto">
+    <main className="min-h-screen  px-3 py-6 sm:px-6 lg:px-10">
+      <section className="mx-auto max-w-275 flex justify-center flex-col">
+        <div className="mb-6 text-center mt-10 ">
+          <h2 className="text-2xl font-sns  uppercase tracking-[0.11em]">
+            CLICK THE BUTTON AND POSE IN {timerSeconds} SECONDS
+          </h2>
+        </div>
 
-      <div className="camera-workspace">
-        <aside className="camera-tools" aria-label="Pengaturan kamera">
-          <button className={showGrid ? 'active' : ''} type="button" onClick={() => setShowGrid((current) => !current)} disabled={controlsDisabled}>
-            <span aria-hidden="true">▦</span><strong>Kisi</strong>
-          </button>
-          <button className={cameraFilter !== 'normal' ? 'active' : ''} type="button" onClick={cycleFilter} disabled={controlsDisabled}>
-            <span aria-hidden="true">◉</span><strong>Filter</strong>
-          </button>
-          <button className={bright ? 'active' : ''} type="button" onClick={() => setBright((current) => !current)} disabled={controlsDisabled}>
-            <span aria-hidden="true">☀</span><strong>Bersinar</strong>
-          </button>
-        </aside>
+        <div className="relative mx-auto w-[90%] overflow-hidden border border-white/10 bg-[#d1d1d1] " style={{ aspectRatio: '5 / 4', borderRadius: 0 }}>
+          <Webcam
+            key={`${cameraAspect}-${cameraAttempt}`}
+            ref={webcamRef}
+            audio={false}
+            className="absolute inset-0 h-full w-full object-cover"
+            mirrored
+            screenshotFormat="image/jpeg"
+            screenshotQuality={0.92}
+            videoConstraints={{
+              facingMode: 'user',
+              width: cameraAspectOptions[cameraAspect].width,
+              height: cameraAspectOptions[cameraAspect].height,
+              aspectRatio: cameraAspectOptions[cameraAspect].ratio,
+            }}
+            onUserMedia={(stream) => {
+              streamRef.current = stream
+              setCameraError(undefined)
+              setCameraState('ready')
+            }}
+            onUserMediaError={(error) => {
+              setCameraError(describeCameraError(error))
+              setCameraState('error')
+            }}
+            style={{ filter: getFilterStyle() }}
+          />
 
-        <div className="camera-main">
-          <div className={`camera-stage camera-aspect-${cameraAspect.replace(':', '-')}`}>
-            <Webcam
-              key={`${cameraAspect}-${cameraAttempt}`}
-              ref={webcamRef}
-              audio={false}
-              className={`webcam camera-lens-${lensMode} camera-filter-${cameraFilter} ${bright ? 'camera-light-on' : ''}`}
-              mirrored
-              screenshotFormat="image/jpeg"
-              screenshotQuality={0.92}
-              videoConstraints={{
-                facingMode: 'user',
-                width: cameraAspectOptions[cameraAspect].width,
-                height: cameraAspectOptions[cameraAspect].height,
-                aspectRatio: cameraAspectOptions[cameraAspect].ratio,
-              }}
-              onUserMedia={(stream) => {
-                streamRef.current = stream
-                setCameraError(undefined)
-                setCameraState('ready')
-              }}
-              onUserMediaError={(error) => {
-                setCameraError(describeCameraError(error))
-                setCameraState('error')
-              }}
+          {selectedPhotoSlot !== undefined && acceptedPhotos[selectedPhotoSlot] && (
+            <img
+              className="absolute inset-0 h-full w-full object-cover"
+              src={acceptedPhotos[selectedPhotoSlot]}
+              alt={`Preview foto ${selectedPhotoSlot + 1}`}
+              style={{ filter: getFilterStyle() }}
             />
+          )}
 
-            <div className="capture-progress">
-              <strong>Foto {activeSlot + 1} / {totalSlots}</strong>
+          {cameraState === 'requesting' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
+              <div className="flex flex-col items-center gap-4">
+                <span className="h-12 w-12 animate-spin rounded-full border border-white/25 border-t-[#d6ff4d]" />
+                <strong className="text-sm font-bold uppercase tracking-[0.2em]">Preparing…</strong>
+              </div>
             </div>
-            {showGrid && selectedPhotoSlot === undefined && <div className="camera-grid" aria-hidden="true" />}
+          )}
 
-            {selectedPhotoSlot !== undefined && acceptedPhotos[selectedPhotoSlot] && (
-              <img
-                className="camera-selected-photo"
-                src={acceptedPhotos[selectedPhotoSlot]}
-                alt={`Preview foto ${selectedPhotoSlot + 1}`}
-              />
-            )}
+          {cameraState === 'countdown' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="absolute inset-0 grid place-items-center bg-[#cfcfcf]/10"
+              aria-live="assertive"
+            >
+              <motion.span
+                key={countdown}
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className="select-none text-[clamp(6rem,18vw,15rem)] font-black leading-none tracking-[-0.08em] text-[#f4f2ec] drop-shadow-[0_12px_0_rgba(20,20,20,0.12)]"
+              >
+                {countdown}
+              </motion.span>
+            </motion.div>
+          )}
 
-            {cameraState === 'requesting' && (
-              <div className="camera-overlay compact">
-                <span className="spinner" />
-                <strong>Menyiapkan kamera…</strong>
-              </div>
-            )}
+          {cameraState === 'flash' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/80" />}
 
-            {cameraState === 'countdown' && (
-              <div className="camera-overlay countdown" aria-live="assertive">
-                <span>{countdown}</span>
-              </div>
-            )}
-
-            {cameraState === 'flash' && <div className="camera-flash" />}
-
-            {cameraState === 'error' && (
-              <div className="camera-overlay error-card">
-                <span className="large-icon">!</span>
-                <strong>{cameraError?.title ?? 'Kamera belum dapat digunakan'}</strong>
-                <p>{cameraError?.message ?? 'Safari gagal memulai kamera.'}</p>
-                <small>{cameraError?.hint ?? 'Periksa HTTPS dan izin kamera.'}</small>
-                <div className="camera-error-actions">
-                  <button className="primary-button" type="button" onClick={retryCamera}>Coba lagi</button>
-                  <button className="secondary-button" type="button" onClick={onCancel}>Kembali</button>
+          {cameraState === 'error' && (
+            <div className="absolute inset-0 z-20 grid place-items-center bg-black/70 p-6 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111111]/80 p-6 text-center shadow-2xl">
+                <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-[#ef3a2c] text-3xl font-black text-white">!</div>
+                <h3 className="mb-2 text-xl font-black uppercase tracking-tight ">{cameraError?.title ?? 'Kamera belum dapat digunakan'}</h3>
+                <p className="mb-3 text-sm leading-6 ">{cameraError?.message ?? 'Safari gagal memulai kamera.'}</p>
+                <small className="block text-xs leading-5">{cameraError?.hint ?? 'Periksa HTTPS dan izin kamera.'}</small>
+                <div className="mt-5 flex justify-center gap-3">
+                  <button className="rounded-full  px-5 py-3 text-sm font-black uppercase text-black" type="button" onClick={retryCamera}>Coba lagi</button>
+                  <button className="rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-black uppercase text-white" type="button" onClick={onCancel}>Kembali</button>
                 </div>
               </div>
-            )}
-          </div>
-
-          {selectedPhotoSlot !== undefined ? (
-            <div className="camera-photo-actions">
-              <button className="camera-retake-action" type="button" onClick={retakeSelected}>Retake</button>
-              <button className="shutter-button" type="button" onClick={onComplete}>Lanjut</button>
             </div>
-          ) : captureComplete ? (
-            <button className="shutter-button" type="button" onClick={onComplete}>Lanjut</button>
-          ) : (
-            <button
-              className="shutter-button"
-              type="button"
-              onClick={() => void runCapture()}
-              disabled={cameraState !== 'ready'}
-            >
-              <span aria-hidden="true">▣</span> Mulai Foto
-            </button>
           )}
         </div>
 
-        <aside className="camera-results" aria-label="Hasil foto">
-          {Array.from({ length: totalSlots }, (_, slot) => (
-            <button
-              className={`${acceptedPhotos[slot] ? 'filled' : ''} ${selectedPhotoSlot === slot ? 'active' : ''}`}
+        <div className="mt-6 flex w-full justify-center overflow-x-auto pb-1 mx-auto ">
+          <div className="flex min-w-[90%] gap-2  ">
+            {Array.from({ length: totalSlots }, (_, slot) => (
+              <motion.button
+                key={slot}
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => acceptedPhotos[slot] && selectAccepted(slot)}
+                disabled={!acceptedPhotos[slot] || cameraState !== 'ready'}
+                aria-label={acceptedPhotos[slot] ? `Tinjau foto ${slot + 1}` : `Foto ${slot + 1} belum diambil`}
+                className={`relative h-40 w-50 shrink-0 overflow-hidden border border-white/60 bg-black  ${selectedPhotoSlot === slot ? 'ring-2 ring-white/80' : ''}`}
+              >
+                {acceptedPhotos[slot] ? (
+                  <img
+                    src={acceptedPhotos[slot]}
+                    alt={`Foto ${slot + 1}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    style={{ filter: getFilterStyle() }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-black" />
+                )}
+
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+
+
+        <div className="mt-20 w-[90%] flex items-center justify-between mx-auto gap-8">
+
+          <div className='flex items-end justify-end' >
+
+            <motion.button
               type="button"
-              key={slot}
-              onClick={() => acceptedPhotos[slot] && selectAccepted(slot)}
-              disabled={!acceptedPhotos[slot] || cameraState !== 'ready'}
-              style={{ aspectRatio: `${cameraAspectOptions[cameraAspect].width} / ${cameraAspectOptions[cameraAspect].height}` }}
-              aria-label={acceptedPhotos[slot] ? `Tinjau foto ${slot + 1}` : `Foto ${slot + 1} belum diambil`}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={selectedPhotoSlot !== undefined ? retakeSelected : onCancel}
+              style={{ filter: getFilterStyle() }}
+              className="flex  items-center justify-center w-40 "
+              aria-label="Retake photo"
             >
-              {acceptedPhotos[slot] && <img src={acceptedPhotos[slot]} alt={`Foto ${slot + 1}`} />}
-              <span>{slot + 1}</span>
-            </button>
-          ))}
-        </aside>
-      </div>
-    </section>
+              <img src="button_retake.svg" alt="Retake" className="" />
+            </motion.button>
+
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setCameraFilter((current) => current === 'normal' ? 'warm' : current === 'warm' ? 'mono' : 'normal')}
+              className="flex w-30 items-center justify-center "
+              aria-label={`Filter kamera saat ini: ${cameraFilter === 'normal' ? 'Normal' : cameraFilter === 'warm' ? 'Warm' : 'Mono'}`}
+            >
+              <img src="button_filter.svg" alt="Filter" className="" />
+            </motion.button>
+          </div>
+
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => (selectedPhotoSlot !== undefined ? onComplete() : void runCapture())}
+            className="flex w-40 items-center justify-center mr-30"
+            aria-label="Ambil foto"
+            disabled={cameraState !== 'ready' && !captureComplete}
+          >
+            <img src="button_camera_on.svg" alt="capture" className="" />
+          </motion.button>
+
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onComplete}
+            className="flex w-40 items-center justify-center"
+            aria-label="Lanjut"
+          >
+            <img src="button_next.svg" alt="Next" className="" />
+          </motion.button>
+        </div>
+      </section>
+    </main>
   )
 }
