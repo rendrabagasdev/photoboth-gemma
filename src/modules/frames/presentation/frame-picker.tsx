@@ -91,7 +91,7 @@ export function FramePicker({
         )}
 
         {mode === 'select' && (
-          <div className="overflow-x-auto flex-col overflow-hidden [-ms-overflow-style:none] scrollbar-width:none [&::-webkit-scrollbar]:hidden pt-10">
+          <div className="overflow-x-auto flex-col overflow-hidden [-ms-overflow-style:none] scrollbar-width:none [&::-webkit-scrollbar]:hidden pt-10 pb-5">
             <motion.div layout className="flex min-w-max items-end justify-start gap-7">
               {frames.map((frame) => {
                 const selected = selectedId === frame.id
