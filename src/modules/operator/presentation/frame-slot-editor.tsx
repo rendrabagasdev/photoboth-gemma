@@ -38,6 +38,7 @@ export function FrameSlotEditor({ image, slots, onChange }: FrameSlotEditorProps
   const historyRef = useRef<FramePhotoSlot[][]>([])
   const [selectedSlot, setSelectedSlot] = useState(0)
   const [snapEnabled, setSnapEnabled] = useState(true)
+  const [precisionMode, setPrecisionMode] = useState(false)
   const [imageRatio, setImageRatio] = useState(1 / 3)
 
   const cloneSlots = (value: FramePhotoSlot[]): FramePhotoSlot[] => (
@@ -95,17 +96,17 @@ export function FrameSlotEditor({ image, slots, onChange }: FrameSlotEditorProps
     if (drag.mode === 'move') {
       nextSlot = {
         ...drag.origin,
-        x: clamp(snap(drag.origin.x + deltaX, event.shiftKey), 0, CANVAS_WIDTH - drag.origin.width),
-        y: clamp(snap(drag.origin.y + deltaY, event.shiftKey), 0, CANVAS_HEIGHT - drag.origin.height),
+        x: clamp(snap(drag.origin.x + deltaX, precisionMode || event.shiftKey), 0, CANVAS_WIDTH - drag.origin.width),
+        y: clamp(snap(drag.origin.y + deltaY, precisionMode || event.shiftKey), 0, CANVAS_HEIGHT - drag.origin.height),
       }
     } else {
       const width = clamp(
-        snap(drag.origin.width + deltaX, event.shiftKey),
+        snap(drag.origin.width + deltaX, precisionMode || event.shiftKey),
         MIN_WIDTH,
         CANVAS_WIDTH - drag.origin.x,
       )
       const height = clamp(
-        snap(drag.origin.height + deltaY, event.shiftKey),
+        snap(drag.origin.height + deltaY, precisionMode || event.shiftKey),
         MIN_HEIGHT,
         CANVAS_HEIGHT - drag.origin.y,
       )
@@ -213,6 +214,10 @@ export function FrameSlotEditor({ image, slots, onChange }: FrameSlotEditorProps
           <label className="slot-snap-toggle">
             <input type="checkbox" checked={snapEnabled} onChange={(event) => setSnapEnabled(event.target.checked)} />
             <span /> Snap
+          </label>
+          <label className="slot-snap-toggle">
+            <input type="checkbox" checked={precisionMode} onChange={(event) => setPrecisionMode(event.target.checked)} />
+            <span /> Presisi
           </label>
           <button type="button" onClick={addSlot} disabled={slots.length >= 6}>＋ Area</button>
         </div>

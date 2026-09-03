@@ -8,6 +8,17 @@ import './tailwind.css'
 import Home from './App'
 import Process from './Process'
 
+const preloadImages = [
+  '/bg_fragment.svg',
+  '/bg_print.png',
+  '/picto_text.svg',
+]
+
+preloadImages.forEach((src) => {
+  const img = new Image()
+  img.src = src
+})
+
 const router = createBrowserRouter([
   {
     path: '/',

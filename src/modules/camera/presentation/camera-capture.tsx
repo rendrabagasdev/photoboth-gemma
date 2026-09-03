@@ -14,7 +14,7 @@ type CameraCaptureProps = {
 }
 
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
-type TimerSeconds = 5
+type TimerSeconds = 1
 type CameraFilter = 'normal' | 'warm' | 'mono'
 type LensMode = 'wide' | 'normal'
 type CameraAspect = '5:4'
@@ -96,7 +96,7 @@ export function CameraCapture({
   const [cameraState, setCameraState] = useState<CameraState>('requesting')
   const [countdown, setCountdown] = useState(3)
   const [activeSlot, setActiveSlot] = useState(slots[0] ?? 0)
-  const [timerSeconds] = useState<TimerSeconds>(5)
+  const [timerSeconds] = useState<TimerSeconds>(1)
   const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
   const [lensMode] = useState<LensMode>('wide')
   const [cameraAspect] = useState<CameraAspect>('5:4')
@@ -265,15 +265,15 @@ export function CameraCapture({
   }
 
   return (
-    <main className="min-h-screen  px-3 py-6 sm:px-6 lg:px-10">
+    <main className="min-h-screen px-10 py-20">
       <section className="mx-auto max-w-275 flex justify-center flex-col">
-        <div className="mb-6 text-center mt-10 ">
+        <div className="text-center ">
           <h2 className="text-2xl font-sns  uppercase tracking-[0.11em]">
             CLICK THE BUTTON AND POSE IN {timerSeconds} SECONDS
           </h2>
         </div>
 
-        <div className="relative mx-auto w-[90%] overflow-hidden border border-white/10 bg-[#d1d1d1] " style={{ aspectRatio: '5 / 4', borderRadius: 0 }}>
+        <div className="relative mx-auto w-full mt-10 overflow-hidden border border-white/10 bg-[#d1d1d1] " style={{ aspectRatio: '5 / 4', borderRadius: 0 }}>
           <Webcam
             key={`${cameraAspect}-${cameraAttempt}`}
             ref={webcamRef}
@@ -356,8 +356,8 @@ export function CameraCapture({
           )}
         </div>
 
-        <div className="mt-6 flex w-full justify-center overflow-x-auto pb-1 mx-auto ">
-          <div className="flex min-w-[90%] gap-2  ">
+        <div className="mt-4 flex w-full justify-center overflow-x-auto  mx-auto ">
+          <div className="flex min-w-full gap-2  ">
             {Array.from({ length: totalSlots }, (_, slot) => (
               <motion.button
                 key={slot}
@@ -386,7 +386,7 @@ export function CameraCapture({
 
 
 
-        <div className="mt-20 w-[90%] flex items-center justify-between mx-auto gap-8">
+        <div className="mt-5 w-full flex items-center justify-between mx-auto gap-8">
 
           <div className='flex items-end justify-end' >
 
@@ -407,7 +407,7 @@ export function CameraCapture({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setCameraFilter((current) => current === 'normal' ? 'warm' : current === 'warm' ? 'mono' : 'normal')}
-              className="flex w-30 items-center justify-center "
+              className="flex w-20 items-center justify-center "
               aria-label={`Filter kamera saat ini: ${cameraFilter === 'normal' ? 'Normal' : cameraFilter === 'warm' ? 'Warm' : 'Mono'}`}
             >
               <img src="button_filter.svg" alt="Filter" className="" />

@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
@@ -43,13 +44,6 @@ type PrintErrorResponse = {
   previousStatus?: 'processing' | 'queued' | 'failed' | 'uncertain'
 }
 
-const printStatusLabel: Record<Exclude<PrintStatus, 'idle'>, string> = {
-  preparing: 'Menyiapkan foto',
-  sending: 'Mengirim ke printer',
-  queued: 'Masuk antrean',
-  failed: 'Gagal mencetak',
-}
-
 type BoothAppProps = {
   container: {
     frameService: FrameService
@@ -68,7 +62,7 @@ const OPERATOR_TOKEN_KEY = 'tobfest-operator-token'
 
 function LandingPage({ onStart, onOperator }: { onStart: () => void; onOperator: () => void }) {
   return (
-    <main className="flex flex-col justify-between items-center h-screen">
+    <main className="flex flex-col justify-between items-center h-screen overflow-hidden">
       <div className="flex flex-col justify-center items-center gap-5 mt-30">
         <img src="picto_text.svg" alt="Logo Picto" className="w-40" />
         <h2 className="text-4xl font-sns  uppercase tracking-widest"> Picture Box </h2>
@@ -89,21 +83,54 @@ function LandingPage({ onStart, onOperator }: { onStart: () => void; onOperator:
   )
 }
 
-function ProcessingPage({ image }: { image?: Blob }) {
+const processingPrintLabel: Record<PrintStatus, string> = {
+  idle: 'JUST A MOMENT\nPLEASE',
+  preparing: 'PREPARING PRINTER\nPLEASE WAIT',
+  sending: 'SENDING TO PRINTER\nPLEASE WAIT',
+  queued: 'PRINT QUEUED\nTHANK YOU',
+  failed: 'PRINT FAILED\nCHECK PRINTER',
+}
+
+function ProcessingPage({ image, printStatus, printError }: { image?: Blob; printStatus: PrintStatus; printError: string }) {
   const imageUrl = useObjectUrl(image)
+  const statusLines = (printError || processingPrintLabel[printStatus]).split('\n')
 
   return (
     <main className="relative flex h-screen w-screen flex-col items-center gap-4 overflow-hidden bg-[url('/bg_print.png')] bg-cover bg-center bg-no-repeat">
       <img
         src="/bg_fragment.svg"
         alt=""
-        className="absolute left-0 top-0 z-20 w-full origin-top scale-[1.124] object-cover"
+        className="absolute left-0 top-0 z-20 w-full origin-top scale-[1.072] object-cover"
       />
+
+      <div className="
+                absolute
+                top-30
+                left-1/2
+                -translate-x-1/2
+                w-100
+        h-20
+        bg-linear-to-b
+        from-black
+        via-black
+        to-transparent
+        opacity-90
+                z-20
+        pointer-events-none
+    " />
+
+      <span id="print-debug" className="absolute bottom-40 z-30 text-center text-4xl font-sns tracking-[0.11em]">
+        {statusLines[0]} <br /> {statusLines[1] ?? 'CHECK PRINTER'}
+      </span>
       {imageUrl && (
-        <img
+        <motion.img
+          key={imageUrl}
           src={imageUrl}
           alt="Hasil foto sedang diproses"
-          className="process_container absolute top-55 w-119"
+          className="absolute top-55 w-56"
+          initial={{ y: '-130%' }}
+          animate={{ y: '-5%' }}
+          transition={{ duration: 6, ease: 'easeInOut' }}
         />
       )}
     </main>
@@ -116,29 +143,29 @@ function ResultPage({
   sessionId,
   shareService,
   onDone,
+  autoPrint = false,
+  preparedQrImage,
+  preparedSharedResult,
 }: {
   result: Blob
   liveResult?: Blob
   sessionId: string
   shareService: ShareService
   onDone: () => void
+  autoPrint?: boolean
+  preparedQrImage?: string
+  preparedSharedResult?: SharedResult
 }) {
   const [photoSheet, setPhotoSheet] = useState<Blob>()
   const [shareSheet, setShareSheet] = useState<Blob>()
-  const resultUrl = useObjectUrl(photoSheet)
-  const [actionError, setActionError] = useState('')
-  const [qrImage, setQrImage] = useState('')
-  const [sharing, setSharing] = useState(false)
-  const [destroying, setDestroying] = useState(false)
-  const [sharedResult, setSharedResult] = useState<SharedResult>()
+  const [qrImage, setQrImage] = useState(preparedQrImage ?? '')
+  const [sharedResult, setSharedResult] = useState<SharedResult | undefined>(preparedSharedResult)
   const shareInFlightRef = useRef(false)
   const printInFlightRef = useRef(false)
   const printRequestIdRef = useRef<string | undefined>(undefined)
   const photoSheetInFlightRef = useRef<Promise<Blob> | undefined>(undefined)
   const shareSheetInFlightRef = useRef<Promise<Blob> | undefined>(undefined)
   const [printStatus, setPrintStatus] = useState<PrintStatus>('idle')
-  const [printError, setPrintError] = useState('')
-  const isPrinting = printStatus === 'preparing' || printStatus === 'sending'
 
   // Lembar cetak memakai margin aman dan garis potong; lembar unduh tidak,
   // karena hasil dari QR tidak pernah dipotong secara fisik.
@@ -157,16 +184,12 @@ function ResultPage({
   const print = async () => {
     if (printInFlightRef.current || printStatus === 'queued') return
     printInFlightRef.current = true
-    setPrintError('')
     setPrintStatus('preparing')
-    let requestSent = false
-    let serverResponded = false
     try {
       const sheet = await preparePhotoSheet()
       setPrintStatus('sending')
       const requestId = printRequestIdRef.current ?? createUuid()
       printRequestIdRef.current = requestId
-      requestSent = true
       const response = await fetch('/api/print', {
         method: 'POST',
         headers: {
@@ -175,7 +198,6 @@ function ResultPage({
         },
         body: sheet,
       })
-      serverResponded = true
       const payload = await response.json().catch(() => undefined) as PrintErrorResponse | undefined
       if (response.status === 409 && payload?.previousStatus === 'queued') {
         setPrintStatus('queued')
@@ -189,11 +211,7 @@ function ResultPage({
         throw new Error(payload?.message || 'Server lokal menolak job print.')
       }
       setPrintStatus('queued')
-    } catch (error) {
-      const message = requestSent && !serverResponded
-        ? 'Koneksi ke server terputus. Coba lagi akan memeriksa permintaan yang sama agar tidak mencetak dua kali.'
-        : error instanceof Error ? error.message : 'Foto gagal dikirim ke printer.'
-      setPrintError(message)
+    } catch {
       setPrintStatus('failed')
     } finally {
       printInFlightRef.current = false
@@ -207,7 +225,7 @@ function ResultPage({
         if (active) setPhotoSheet(sheet)
       })
       .catch(() => {
-        if (active) setActionError('Hasil gagal dibuat.')
+        if (active) setPhotoSheet(undefined)
       })
     return () => {
       active = false
@@ -221,17 +239,20 @@ function ResultPage({
         if (active) setShareSheet(sheet)
       })
       .catch(() => {
-        if (active) setActionError('Hasil gagal dibuat.')
+        if (active) setShareSheet(undefined)
       })
     return () => {
       active = false
     }
   }, [prepareShareSheet])
 
+  useEffect(() => {
+    if (autoPrint) void print()
+  }, [autoPrint])
+
   const createQr = useCallback(async () => {
     if (!liveResult || !shareSheet || shareInFlightRef.current || sharedResult) return
     shareInFlightRef.current = true
-    setSharing(true)
     try {
       const shared = await shareService.publish(sessionId, { photo: shareSheet, live: liveResult })
       const image = await QRCode.toDataURL(shared.downloadUrl, {
@@ -239,77 +260,75 @@ function ResultPage({
         margin: 2,
         color: {
           dark: readThemeColor('--theme-ink', '#171711'),
-          light: readThemeColor('--theme-paper', '#fffaf0'),
+          light: readThemeColor('--theme-paper', '#F4F0E2'),
         },
         errorCorrectionLevel: 'M',
       })
       setSharedResult(shared)
       setQrImage(image)
-      setActionError('')
     } catch {
-      setActionError('QR gagal dibuat.')
+      setQrImage('')
     } finally {
       shareInFlightRef.current = false
-      setSharing(false)
     }
   }, [liveResult, shareSheet, sessionId, shareService, sharedResult])
+
+  const startAgain = async () => {
+    if (sharedResult) {
+      await shareService.destroy(sharedResult.id, sharedResult.destroyToken).catch(() => undefined)
+    }
+    onDone()
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => void createQr(), 0)
     return () => window.clearTimeout(timer)
   }, [createQr])
 
-  const startAgain = async () => {
-    if (destroying || sharing) return
-    if (!sharedResult) {
-      onDone()
-      return
-    }
-
-    setDestroying(true)
-    try {
-      await shareService.destroy(sharedResult.id, sharedResult.destroyToken)
-      onDone()
-    } catch {
-      setActionError('Hasil belum terhapus.')
-      setDestroying(false)
-    }
-  }
-
   return (
-    <main className="result-page">
-      <div className="result-copy">
-        <h1>Selesai.</h1>
-        <div className="result-buttons">
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => void print()}
-            disabled={isPrinting || printStatus === 'queued' || printStatus === 'failed'}
-          >
-            {printStatus === 'queued' ? '✓ Masuk antrean' : isPrinting ? '…' : '▣ Cetak 4R'}
-          </button>
+    <main className="relative flex h-screen w-screen flex-col items-center gap-4 overflow-hidden bg-[url('/bg_print.png')] bg-cover bg-center bg-no-repeat">
+      <img
+        src="/bg_fragment.svg"
+        alt=""
+        className="absolute left-0 top-0 z-20 w-full origin-top  object-cover scale-[1.072]"
+      />
+      <div className="
+                absolute
+                top-30
+                left-1/2
+                -translate-x-1/2
+                w-100
+        h-20
+        bg-linear-to-b
+        from-black
+        via-black
+        to-transparent
+        opacity-90
+        z-20
+        pointer-events-none
+    " />
+      <button
+        type="button"
+        onClick={() => void startAgain()}
+        aria-label="Mulai lagi"
+        className="absolute bottom-40 z-30  bg-transparent p-0  font-sns tracking-[0.11em] text-center "
+      >
+        <p className="text-4xl" >
+          JUST A MOMENT <br /> PLEASE
+        </p>
+
+      </button>
+      {qrImage && (
+        <div className="w-100 h-180 flex flex-col justify-end items-center bg-[var(--theme-paper)] text-black absolute top-30 gap-8 qr_container pb-10" >
+          <img className="w-30" src="picto_text_hitam.svg" alt="Picto Text" />
+          <span className="text-4xl text-center"> SCAN FOR <br /> DOWNLOAD </span>
+          <img
+            src={qrImage}
+            alt="QR unduh foto dan Live Photo"
+            className="w-80 "
+          />
         </div>
-        {printStatus !== 'idle' && (
-          <p className={`print-status ${printStatus}`} aria-live="polite">
-            {printStatusLabel[printStatus]}
-          </p>
-        )}
-        {printError && <p className="form-error print-error" role="alert">{printError}</p>}
-        {printStatus === 'failed' && (
-          <button className="secondary-button print-retry" type="button" onClick={() => void print()}>
-            Coba cetak lagi
-          </button>
-        )}
-        {sharing && <span className="qr-loading" aria-live="polite">•••</span>}
-        {qrImage && <img className="download-qr" src={qrImage} alt="QR unduh foto dan Live Photo" />}
-        {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        {actionError && !qrImage && <button className="secondary-button" type="button" onClick={() => void createQr()}>Coba lagi</button>}
-        <button className="text-button" type="button" onClick={() => void startAgain()} disabled={destroying || sharing || isPrinting}>{destroying ? '…' : 'Mulai lagi →'}</button>
-      </div>
-      <div className="result-visual">
-        <div className="final-photo-wrap">{resultUrl && <img src={resultUrl} alt="Hasil akhir photobooth" />}</div>
-      </div>
+      )}
     </main>
   )
 }
@@ -325,6 +344,10 @@ export function BoothApp({ container }: BoothAppProps) {
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
   )
   const [processingImage, setProcessingImage] = useState<Blob>()
+  const [processingQrImage, setProcessingQrImage] = useState('')
+  const [processingSharedResult, setProcessingSharedResult] = useState<SharedResult>()
+  const [processingPrintStatus, setProcessingPrintStatus] = useState<PrintStatus>('idle')
+  const [processingPrintError, setProcessingPrintError] = useState('')
   const [fatalError, setFatalError] = useState('')
 
   const selectedFrame = useMemo(() => {
@@ -452,7 +475,7 @@ export function BoothApp({ container }: BoothAppProps) {
     )))
   }
 
-  const finalize = async () => {
+  const finalize = async (printAfterFinalize = false) => {
     const photosComplete = session && Array.from(
       { length: requiredPhotoCount },
       (_, index) => Boolean(session.photos[index]),
@@ -477,13 +500,70 @@ export function BoothApp({ container }: BoothAppProps) {
     try {
       const finalImage = await composePhotoStrip(finalPhotos, selectedFrame, finalTransforms)
       setProcessingImage(finalImage)
-      const finalLive = await composeLiveTemplate(
+      const printPromise = printAfterFinalize
+        ? (async () => {
+          setProcessingPrintStatus('preparing')
+          setProcessingPrintError('')
+          try {
+            const printSheet = await composePhotoSheet(finalImage, { variant: 'print' })
+            setProcessingPrintStatus('sending')
+            const response = await fetch('/api/print', {
+              method: 'POST',
+              headers: {
+                'content-type': printSheet.type || 'image/jpeg',
+                'x-print-request-id': createUuid(),
+              },
+              body: printSheet,
+            })
+            const payload = await response.json().catch(() => undefined) as PrintErrorResponse | undefined
+            if (!response.ok) {
+              throw new Error(payload?.message || (response.status === 503 ? 'PRINTER NOT CONNECTED' : 'PRINTER REJECTED'))
+            }
+            setProcessingPrintStatus('queued')
+          } catch (error) {
+            const message = error instanceof TypeError
+              ? 'PRINTER CONNECTION LOST'
+              : error instanceof Error ? error.message : 'PRINT FAILED'
+            setProcessingPrintError(message.toUpperCase())
+            setProcessingPrintStatus('failed')
+          }
+        })()
+        : Promise.resolve()
+      const finalLivePromise = composeLiveTemplate(
         finalPhotos,
         finalLivePhotos,
         selectedFrame,
         finalTransforms,
       ).catch(() => undefined)
-      await new Promise<void>((resolve) => window.setTimeout(resolve, 7_000))
+      const shareSheetPromise = composePhotoSheet(finalImage, { variant: 'download' })
+      const finalLive = await finalLivePromise
+      const qrPromise = finalLive
+        ? shareSheetPromise
+          .then((shareSheet) => container.shareService.publish(session.id, { photo: shareSheet, live: finalLive }))
+          .then(async (shared) => {
+            const qrImage = await QRCode.toDataURL(shared.downloadUrl, {
+              width: 420,
+              margin: 2,
+              color: {
+                dark: readThemeColor('--theme-ink', '#171711'),
+                light: readThemeColor('--theme-paper', '#F4F0E2'),
+              },
+              errorCorrectionLevel: 'M',
+            })
+            return { shared, qrImage }
+          })
+          .catch(() => undefined)
+        : Promise.resolve(undefined)
+
+      const [qrResult] = await Promise.all([
+        qrPromise,
+        printPromise,
+        new Promise<void>((resolve) => window.setTimeout(resolve, 7_000)),
+      ])
+      if (qrResult) {
+        setProcessingSharedResult(qrResult.shared)
+        setProcessingQrImage(qrResult.qrImage)
+      }
       const completed: BoothSession = {
         ...session,
         frameId: selectedFrame.id,
@@ -506,6 +586,10 @@ export function BoothApp({ container }: BoothAppProps) {
   const reset = () => {
     setSession(undefined)
     setProcessingImage(undefined)
+    setProcessingQrImage('')
+    setProcessingSharedResult(undefined)
+    setProcessingPrintStatus('idle')
+    setProcessingPrintError('')
     setCameraSlots([])
     setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
     setFatalError('')
@@ -596,7 +680,7 @@ export function BoothApp({ container }: BoothAppProps) {
         onSelect={() => undefined}
         onTransformChange={changePhotoTransform}
         onRetake={retake}
-        onContinue={() => void finalize()}
+        onContinue={() => void finalize(true)}
         onBack={() => {
           setCameraSlots(allCameraSlots)
           setScreen('camera')
@@ -627,10 +711,10 @@ export function BoothApp({ container }: BoothAppProps) {
     )
   }
 
-  if (screen === 'processing') return <ProcessingPage image={processingImage} />
+  if (screen === 'processing') return <ProcessingPage image={processingImage} printStatus={processingPrintStatus} printError={processingPrintError} />
 
   if (screen === 'result' && session?.finalImage) {
-    return <ResultPage result={session.finalImage} liveResult={session.finalLive} sessionId={session.id} shareService={container.shareService} onDone={reset} />
+    return <ResultPage result={session.finalImage} liveResult={session.finalLive} sessionId={session.id} shareService={container.shareService} onDone={reset} autoPrint={false} preparedQrImage={processingQrImage} preparedSharedResult={processingSharedResult} />
   }
 
   return <LandingPage onStart={() => void startSession()} onOperator={() => void openOperator()} />

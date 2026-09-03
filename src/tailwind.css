@@ -24,7 +24,8 @@ body {
 }
 
 .process_container {
-    animation: processEnter 6s ease-in-out;
+    animation: processEnter 6s ease-in-out both;
+    will-change: transform;
 }
 
 @keyframes processEnter {
@@ -49,6 +50,39 @@ body {
     }
 
     100% {
-        transform: translateY(0);
+        transform: translateY(-5%);
+    }
+}
+
+
+
+.qr_container {
+    animation: QREnter 6s ease-in-out both;
+    will-change: transform;
+}
+
+@keyframes QREnter {
+    0% {
+        transform: translateY(-130%);
+    }
+
+    20% {
+        transform: translateY(-100%);
+    }
+
+    30% {
+        transform: translateY(-70%);
+    }
+
+    40% {
+        transform: translateY(-50%);
+    }
+
+    80% {
+        transform: translateY(-20%);
+    }
+
+    100% {
+        transform: translateY(-5%);
     }
 }
