@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CameraCapture } from '../../camera/presentation/camera-capture'
-import { composePhotoStrip } from '../../camera/application/compose-photo-strip'
+import { CameraCapture, type CameraFilter, getCameraFilterStyle } from '../../camera/presentation/camera-capture'
+import { composePhotoStrip, type PhotoFilter } from '../../camera/application/compose-photo-strip'
 import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import {
@@ -91,7 +91,7 @@ const processingPrintLabel: Record<PrintStatus, string> = {
   failed: 'PRINT FAILED\nCHECK PRINTER',
 }
 
-function ProcessingPage({ image, printStatus, printError }: { image?: Blob; printStatus: PrintStatus; printError: string }) {
+function ProcessingPage({ image, printStatus, printError, cameraFilter }: { image?: Blob; printStatus: PrintStatus; printError: string; cameraFilter: CameraFilter }) {
   const imageUrl = useObjectUrl(image)
   const statusLines = (printError || processingPrintLabel[printStatus]).split('\n')
 
@@ -128,6 +128,7 @@ function ProcessingPage({ image, printStatus, printError }: { image?: Blob; prin
           src={imageUrl}
           alt="Hasil foto sedang diproses"
           className="absolute top-55 w-56"
+          style={{ filter: getCameraFilterStyle(cameraFilter) }}
           initial={{ y: '-130%' }}
           animate={{ y: '-5%' }}
           transition={{ duration: 6, ease: 'easeInOut' }}
@@ -274,9 +275,6 @@ function ResultPage({
   }, [liveResult, shareSheet, sessionId, shareService, sharedResult])
 
   const startAgain = async () => {
-    if (sharedResult) {
-      await shareService.destroy(sharedResult.id, sharedResult.destroyToken).catch(() => undefined)
-    }
     onDone()
   }
 
@@ -339,6 +337,7 @@ export function BoothApp({ container }: BoothAppProps) {
   const [session, setSession] = useState<BoothSession>()
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null)
   const [cameraSlots, setCameraSlots] = useState<number[]>([])
+  const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
   const [photoAssignments, setPhotoAssignments] = useState<number[]>([])
   const [photoTransforms, setPhotoTransforms] = useState<PhotoTransform[]>(
     () => defaultPhotoTransforms.map((transform) => ({ ...transform })),
@@ -498,7 +497,7 @@ export function BoothApp({ container }: BoothAppProps) {
     persistSession((current) => ({ ...current, status: 'processing' }))
     setScreen('processing')
     try {
-      const finalImage = await composePhotoStrip(finalPhotos, selectedFrame, finalTransforms)
+      const finalImage = await composePhotoStrip(finalPhotos, selectedFrame, finalTransforms, cameraFilter as PhotoFilter)
       setProcessingImage(finalImage)
       const printPromise = printAfterFinalize
         ? (async () => {
@@ -645,6 +644,7 @@ export function BoothApp({ container }: BoothAppProps) {
         frames={frames}
         photos={[]}
         livePhotos={[]}
+        cameraFilter={cameraFilter}
         transforms={photoTransforms}
         selectedId={selectedFrameId}
         onSelect={chooseFrame}
@@ -663,6 +663,7 @@ export function BoothApp({ container }: BoothAppProps) {
         frames={[selectedFrame]}
         photos={session?.photos ?? []}
         livePhotos={session?.livePhotos ?? []}
+        cameraFilter={cameraFilter}
         transforms={photoTransforms}
         photoAssignments={photoAssignments}
         onPhotoAssignmentChange={(slot, photoIndex) => {
@@ -695,6 +696,8 @@ export function BoothApp({ container }: BoothAppProps) {
         slots={cameraSlots}
         totalSlots={requiredPhotoCount}
         photos={session?.photos ?? []}
+        cameraFilter={cameraFilter}
+        onCameraFilterChange={setCameraFilter}
         startInReview={cameraSlots.length > 1 && session?.photos.length === requiredPhotoCount}
         onCapture={capturePhoto}
         onComplete={finishCapture}
@@ -711,7 +714,7 @@ export function BoothApp({ container }: BoothAppProps) {
     )
   }
 
-  if (screen === 'processing') return <ProcessingPage image={processingImage} printStatus={processingPrintStatus} printError={processingPrintError} />
+  if (screen === 'processing') return <ProcessingPage image={processingImage} printStatus={processingPrintStatus} printError={processingPrintError} cameraFilter={cameraFilter} />
 
   if (screen === 'result' && session?.finalImage) {
     return <ResultPage result={session.finalImage} liveResult={session.finalLive} sessionId={session.id} shareService={container.shareService} onDone={reset} autoPrint={false} preparedQrImage={processingQrImage} preparedSharedResult={processingSharedResult} />

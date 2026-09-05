@@ -11,6 +11,7 @@ type FramePickerProps = {
   frames: PhotoFrame[]
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>
+  cameraFilter?: 'normal' | 'warm' | 'mono'
   transforms: PhotoTransform[]
   photoAssignments?: number[]
   selectedId: string | null
@@ -27,6 +28,7 @@ export function FramePicker({
   frames,
   photos,
   livePhotos,
+  cameraFilter = 'normal',
   transforms,
   photoAssignments,
   selectedId,
@@ -54,7 +56,7 @@ export function FramePicker({
   }, [mode, selectedId])
 
   return (
-    <main className="min-h-screen px-10 py-20">
+    <main className="min-h-screen px-10 pt-20">
       <section className="mx-auto max-w-7xl">
 
 
@@ -65,6 +67,7 @@ export function FramePicker({
             <PhotoTemplateEditor
               photos={photos}
               livePhotos={livePhotos}
+              cameraFilter={cameraFilter}
               frame={selectedFrame}
               transforms={transforms}
               photoAssignments={photoAssignments}

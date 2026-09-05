@@ -12,6 +12,14 @@ import {
 import { drawFrameDecorations } from './draw-frame-decoration'
 import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
 
+export type PhotoFilter = 'normal' | 'warm' | 'mono'
+
+function filterValue(filter: PhotoFilter): string {
+  if (filter === 'warm') return 'sepia(0.2) saturate(1.22) contrast(1.04)'
+  if (filter === 'mono') return 'grayscale(1) contrast(1.08)'
+  return 'none'
+}
+
 function loadImage(source: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
@@ -26,6 +34,7 @@ function drawPositionedPhoto(
   image: HTMLImageElement,
   slot: TemplateSlot,
   inputTransform: PhotoTransform,
+  filter: PhotoFilter,
 ): void {
   const transform = clampPhotoTransform(inputTransform)
   const imageRatio = image.width / image.height
@@ -56,6 +65,7 @@ function drawPositionedPhoto(
     slot.borderRadius,
   )
   context.clip()
+  context.filter = filterValue(filter)
   context.drawImage(image, offsetX - width / 2, offsetY - height / 2, width, height)
   context.restore()
 }
@@ -64,6 +74,7 @@ export async function composePhotoStrip(
   photos: string[],
   frame: PhotoFrame,
   transforms: PhotoTransform[] = defaultPhotoTransforms,
+  filter: PhotoFilter = 'normal',
 ): Promise<Blob> {
   const layout = resolveTemplateLayout(frame.layoutId)
   const slots = resolveFrameSlots(frame)
@@ -87,7 +98,7 @@ export async function composePhotoStrip(
   images.forEach((image, index) => {
     const slot = slots[index]
     const transform = transforms[index] ?? defaultPhotoTransforms[index]
-    if (slot && transform) drawPositionedPhoto(context, image, slot, transform)
+    if (slot && transform) drawPositionedPhoto(context, image, slot, transform, filter)
   })
 
   if (frame.imageBlob) {

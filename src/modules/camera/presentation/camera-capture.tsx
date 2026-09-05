@@ -7,6 +7,8 @@ type CameraCaptureProps = {
   slots: number[]
   totalSlots: number
   photos: string[]
+  cameraFilter?: CameraFilter
+  onCameraFilterChange?: (filter: CameraFilter) => void
   startInReview?: boolean
   onCapture: (slot: number, capture: LivePhotoCapture) => void
   onComplete: () => void
@@ -14,8 +16,8 @@ type CameraCaptureProps = {
 }
 
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
-type TimerSeconds = 1
-type CameraFilter = 'normal' | 'warm' | 'mono'
+type TimerSeconds = 3
+export type CameraFilter = 'normal' | 'warm' | 'mono'
 type LensMode = 'wide' | 'normal'
 type CameraAspect = '5:4'
 
@@ -81,10 +83,20 @@ function describeCameraError(error: string | DOMException): CameraErrorInfo {
   }
 }
 
+export function getCameraFilterStyle(cameraFilter: CameraFilter) {
+  return cameraFilter === 'warm'
+    ? 'sepia(0.2) saturate(1.22) contrast(1.04)'
+    : cameraFilter === 'mono'
+      ? 'grayscale(1) contrast(1.1)'
+      : 'none'
+}
+
 export function CameraCapture({
   slots,
   totalSlots,
   photos,
+  cameraFilter = 'normal',
+  onCameraFilterChange = () => undefined,
   startInReview = false,
   onCapture,
   onComplete,
@@ -96,8 +108,7 @@ export function CameraCapture({
   const [cameraState, setCameraState] = useState<CameraState>('requesting')
   const [countdown, setCountdown] = useState(3)
   const [activeSlot, setActiveSlot] = useState(slots[0] ?? 0)
-  const [timerSeconds] = useState<TimerSeconds>(1)
-  const [cameraFilter, setCameraFilter] = useState<CameraFilter>('normal')
+  const [timerSeconds] = useState<TimerSeconds>(3)
   const [lensMode] = useState<LensMode>('wide')
   const [cameraAspect] = useState<CameraAspect>('5:4')
   const [slotCursor, setSlotCursor] = useState(0)
@@ -114,17 +125,12 @@ export function CameraCapture({
     }
   }, [])
 
-  const getFilterStyle = () => cameraFilter === 'warm'
-    ? 'sepia(0.2) saturate(1.22) contrast(1.04)'
-    : cameraFilter === 'mono'
-      ? 'grayscale(1) contrast(1.08)'
-      : 'none'
 
   useEffect(() => {
     const video = webcamRef.current?.video
     if (!video) return
 
-    video.style.filter = getFilterStyle()
+    video.style.filter = getCameraFilterStyle(cameraFilter)
   }, [cameraFilter])
 
   const captureStill = () => {
@@ -297,7 +303,7 @@ export function CameraCapture({
               setCameraError(describeCameraError(error))
               setCameraState('error')
             }}
-            style={{ filter: getFilterStyle() }}
+            style={{ filter: getCameraFilterStyle(cameraFilter) }}
           />
 
           {selectedPhotoSlot !== undefined && acceptedPhotos[selectedPhotoSlot] && (
@@ -305,7 +311,7 @@ export function CameraCapture({
               className="absolute inset-0 h-full w-full object-cover"
               src={acceptedPhotos[selectedPhotoSlot]}
               alt={`Preview foto ${selectedPhotoSlot + 1}`}
-              style={{ filter: getFilterStyle() }}
+              style={{ filter: getCameraFilterStyle(cameraFilter) }}
             />
           )}
 
@@ -366,14 +372,14 @@ export function CameraCapture({
                 onClick={() => acceptedPhotos[slot] && selectAccepted(slot)}
                 disabled={!acceptedPhotos[slot] || cameraState !== 'ready'}
                 aria-label={acceptedPhotos[slot] ? `Tinjau foto ${slot + 1}` : `Foto ${slot + 1} belum diambil`}
-                className={`relative h-40 w-50 shrink-0 overflow-hidden border border-white/60 bg-black  ${selectedPhotoSlot === slot ? 'ring-2 ring-white/80' : ''}`}
+                className={`relative h-35 w-44 mx-auto shrink-0 overflow-hidden border border-white/60 bg-black  ${selectedPhotoSlot === slot ? 'ring-2 ring-white/80' : ''}`}
               >
                 {acceptedPhotos[slot] ? (
                   <img
                     src={acceptedPhotos[slot]}
                     alt={`Foto ${slot + 1}`}
                     className="absolute inset-0 h-full w-full object-cover"
-                    style={{ filter: getFilterStyle() }}
+                    style={{ filter: getCameraFilterStyle(cameraFilter) }}
                   />
                 ) : (
                   <div className="absolute inset-0 bg-black" />
@@ -395,7 +401,7 @@ export function CameraCapture({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={selectedPhotoSlot !== undefined ? retakeSelected : onCancel}
-              style={{ filter: getFilterStyle() }}
+              style={{ filter: getCameraFilterStyle(cameraFilter) }}
               className="flex  items-center justify-center w-40 "
               aria-label="Retake photo"
             >
@@ -406,7 +412,7 @@ export function CameraCapture({
               type="button"
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => setCameraFilter((current) => current === 'normal' ? 'warm' : current === 'warm' ? 'mono' : 'normal')}
+              onClick={() => onCameraFilterChange(cameraFilter === 'normal' ? 'warm' : cameraFilter === 'warm' ? 'mono' : 'normal')}
               className="flex w-20 items-center justify-center "
               aria-label={`Filter kamera saat ini: ${cameraFilter === 'normal' ? 'Normal' : cameraFilter === 'warm' ? 'Warm' : 'Mono'}`}
             >

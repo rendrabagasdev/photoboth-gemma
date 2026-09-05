@@ -15,6 +15,7 @@ import { TemplateDecoration } from './template-decoration'
 type PhotoTemplateEditorProps = {
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>
+  cameraFilter?: 'normal' | 'warm' | 'mono'
   frame: PhotoFrame
   transforms: PhotoTransform[]
   photoAssignments?: number[]
@@ -78,6 +79,7 @@ function LivePhotoLayer({
 export function PhotoTemplateEditor({
   photos,
   livePhotos,
+  cameraFilter = 'normal',
   frame,
   transforms,
   photoAssignments,
@@ -95,6 +97,11 @@ export function PhotoTemplateEditor({
   const effectiveAssignments = photoAssignments && photoAssignments.length === slots.length
     ? photoAssignments
     : Array.from({ length: slots.length }, (_, index) => Math.min(index, Math.max(photos.length - 1, 0)))
+  const filterStyle = cameraFilter === 'warm'
+    ? 'sepia(0.2) saturate(1.22) contrast(1.04)'
+    : cameraFilter === 'mono'
+      ? 'grayscale(1) contrast(1.08)'
+      : 'none'
 
   useEffect(() => {
     if (!draggedPhoto) return
@@ -222,7 +229,7 @@ export function PhotoTemplateEditor({
       <motion.div
         layout
         transition={{ type: 'spring', stiffness: 320, damping: 24, mass: 0.6 }}
-        className="relative flex w-72 shrink-0 justify-between isolate overflow-hidden"
+        className="relative flex w-68 shrink-0 justify-between isolate overflow-hidden"
         style={{
           '--template-accent': frame.accent,
           '--template-soft': frame.accentSoft,
@@ -286,6 +293,7 @@ export function PhotoTemplateEditor({
                 draggable={false}
                 style={{
                   ...mediaStyle,
+                  filter: filterStyle,
                   position: 'absolute',
                   maxWidth: 'none',
                   objectFit: 'cover',
@@ -310,7 +318,7 @@ export function PhotoTemplateEditor({
         <TemplateDecoration frame={frame} />
       </motion.div>
 
-      <motion.div layout className="flex w-62 shrink-0 flex-col items-end gap-6 overflow-x-auto" aria-label="Daftar foto yang diambil">
+      <motion.div layout className="flex w-58 shrink-0 flex-col items-end gap-6 overflow-x-auto" aria-label="Daftar foto yang diambil">
         {Array.from({ length: Math.min(photos.length, 4) }, (_, photoIndex) => (
           <motion.button
             key={photoIndex}
@@ -336,7 +344,7 @@ export function PhotoTemplateEditor({
             }}
             aria-label={`Pilih foto ${photoIndex + 1}`}
           >
-            <img src={photos[photoIndex]} alt={`Foto ${photoIndex + 1}`} className="h-full w-full object-cover" />
+            <img src={photos[photoIndex]} alt={`Foto ${photoIndex + 1}`} className="h-full w-full object-cover" style={{ filter: filterStyle }} />
           </motion.button>
         ))}
       </motion.div>
