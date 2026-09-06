@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CameraCapture, getCameraFilterStyle, type CameraFilter } from '../../camera/presentation/camera-capture'
+import { CameraCapture, type CameraFilter } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip, type PhotoFilter } from '../../camera/application/compose-photo-strip'
 import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
+import { composePrintPdf } from '../../camera/application/compose-print-pdf'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import {
   defaultPhotoTransforms,
@@ -91,7 +92,7 @@ const processingPrintLabel: Record<PrintStatus, string> = {
   failed: 'PRINT FAILED\nCHECK PRINTER',
 }
 
-function ProcessingPage({ image, printStatus, printError, cameraFilter }: { image?: Blob; printStatus: PrintStatus; printError: string; cameraFilter: CameraFilter }) {
+function ProcessingPage({ image, printStatus, printError }: { image?: Blob; printStatus: PrintStatus; printError: string }) {
   const imageUrl = useObjectUrl(image)
   const statusLines = (printError || processingPrintLabel[printStatus]).split('\n')
 
@@ -128,7 +129,6 @@ function ProcessingPage({ image, printStatus, printError, cameraFilter }: { imag
           src={imageUrl}
           alt="Hasil foto sedang diproses"
           className="absolute top-55 w-56"
-          style={{ filter: getCameraFilterStyle(cameraFilter) }}
           initial={{ y: '-130%' }}
           animate={{ y: '-5%' }}
           transition={{ duration: 6, ease: 'easeInOut' }}
@@ -161,6 +161,7 @@ function ResultPage({
   const [shareSheet, setShareSheet] = useState<Blob>()
   const [qrImage, setQrImage] = useState(preparedQrImage ?? '')
   const [sharedResult, setSharedResult] = useState<SharedResult | undefined>(preparedSharedResult)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const shareInFlightRef = useRef(false)
   const printInFlightRef = useRef(false)
   const printRequestIdRef = useRef<string | undefined>(undefined)
@@ -216,6 +217,23 @@ function ResultPage({
       setPrintStatus('failed')
     } finally {
       printInFlightRef.current = false
+    }
+  }
+
+  const downloadPdf = async () => {
+    if (downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      const sheet = await preparePhotoSheet()
+      const pdf = await composePrintPdf(sheet)
+      const url = URL.createObjectURL(pdf)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `tobfest-print-${sessionId.slice(0, 8)}.pdf`
+      link.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloadingPdf(false)
     }
   }
 
@@ -325,6 +343,14 @@ function ResultPage({
             alt="QR unduh foto dan Live Photo"
             className="w-80 "
           />
+          <button
+            type="button"
+            onClick={() => void downloadPdf()}
+            disabled={downloadingPdf}
+            className="rounded-full bg-black px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-white disabled:opacity-50"
+          >
+            {downloadingPdf ? 'MENYIAPKAN PDF' : 'DOWNLOAD PDF'}
+          </button>
         </div>
       )}
     </main>
@@ -497,15 +523,14 @@ export function BoothApp({ container }: BoothAppProps) {
     persistSession((current) => ({ ...current, status: 'processing' }))
     setScreen('processing')
     try {
-      const printImage = await composePhotoStrip(finalPhotos, selectedFrame, finalTransforms, 'normal')
       const filteredImage = await composePhotoStrip(finalPhotos, selectedFrame, finalTransforms, cameraFilter as PhotoFilter)
-      setProcessingImage(printImage)
+      setProcessingImage(filteredImage)
       const printPromise = printAfterFinalize
         ? (async () => {
           setProcessingPrintStatus('preparing')
           setProcessingPrintError('')
           try {
-            const printSheet = await composePhotoSheet(printImage, { variant: 'print' })
+            const printSheet = await composePhotoSheet(filteredImage, { variant: 'print' })
             setProcessingPrintStatus('sending')
             const response = await fetch('/api/print', {
               method: 'POST',
@@ -568,7 +593,7 @@ export function BoothApp({ container }: BoothAppProps) {
         ...session,
         frameId: selectedFrame.id,
         status: 'completed',
-        finalImage: printImage,
+        finalImage: filteredImage,
         finalLive,
         completedAt: new Date().toISOString(),
       }
@@ -715,7 +740,7 @@ export function BoothApp({ container }: BoothAppProps) {
     )
   }
 
-  if (screen === 'processing') return <ProcessingPage image={processingImage} printStatus={processingPrintStatus} printError={processingPrintError} cameraFilter={cameraFilter} />
+  if (screen === 'processing') return <ProcessingPage image={processingImage} printStatus={processingPrintStatus} printError={processingPrintError} />
 
   if (screen === 'result' && session?.finalImage) {
     return <ResultPage result={session.finalImage} liveResult={session.finalLive} sessionId={session.id} shareService={container.shareService} onDone={reset} autoPrint={false} preparedQrImage={processingQrImage} preparedSharedResult={processingSharedResult} />
