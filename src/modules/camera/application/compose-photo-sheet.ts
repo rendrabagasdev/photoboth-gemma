@@ -1,6 +1,56 @@
 import { PRINT_HEIGHT, PRINT_WIDTH, TEMPLATE_HEIGHT, TEMPLATE_WIDTH } from '../domain/template-layout'
 
-const SAFE_MARGIN_PX = Math.round((2 / 25.4) * 300)
+export type SheetMarginsMm = {
+  top?: number
+  right?: number
+  bottom?: number
+  left?: number
+}
+
+export type SheetMarginsPx = {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+export const DEFAULT_SAFE_MARGIN_MM = 2
+
+function parseEnvMargin(key: string, fallback: number): number {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const raw = import.meta.env[key]
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      const parsed = parseFloat(raw)
+      if (!Number.isNaN(parsed) && parsed >= 0) return parsed
+    }
+  }
+  return fallback
+}
+
+export function getDefaultSafeMarginsMm(): Required<SheetMarginsMm> {
+  const globalFallback = parseEnvMargin('VITE_PRINT_SAFE_MARGIN_MM', DEFAULT_SAFE_MARGIN_MM)
+  return {
+    top: parseEnvMargin('VITE_PRINT_MARGIN_TOP_MM', globalFallback),
+    right: parseEnvMargin('VITE_PRINT_MARGIN_RIGHT_MM', globalFallback),
+    bottom: parseEnvMargin('VITE_PRINT_MARGIN_BOTTOM_MM', globalFallback),
+    left: parseEnvMargin('VITE_PRINT_MARGIN_LEFT_MM', globalFallback),
+  }
+}
+
+export function resolveSafeMarginsPx(margins?: SheetMarginsMm): SheetMarginsPx {
+  const defaultMm = getDefaultSafeMarginsMm()
+  const topMm = Math.max(0, margins?.top ?? defaultMm.top)
+  const rightMm = Math.max(0, margins?.right ?? defaultMm.right)
+  const bottomMm = Math.max(0, margins?.bottom ?? defaultMm.bottom)
+  const leftMm = Math.max(0, margins?.left ?? defaultMm.left)
+
+  return {
+    top: Math.round((topMm / 25.4) * 300),
+    right: Math.round((rightMm / 25.4) * 300),
+    bottom: Math.round((bottomMm / 25.4) * 300),
+    left: Math.round((leftMm / 25.4) * 300),
+  }
+}
 
 function loadBlobImage(blob: Blob): Promise<{ image: HTMLImageElement; url: string }> {
   return new Promise((resolve, reject) => {
@@ -26,7 +76,7 @@ function sheetBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 /**
- * `print` menyiapkan lembar untuk printer: strip diberi margin aman dan garis
+ * `print` menyiapkan lembar untuk printer: strip diberi margin aman per sisi dan garis
  * potong. `download` mengisi kanvas penuh tanpa margin maupun garis potong,
  * karena hasil unduhan tidak pernah dipotong secara fisik.
  */
@@ -34,6 +84,7 @@ export type PhotoSheetVariant = 'print' | 'download'
 
 export type ComposePhotoSheetOptions = {
   variant?: PhotoSheetVariant
+  margins?: SheetMarginsMm
 }
 
 export async function composePhotoSheet(
@@ -59,20 +110,21 @@ export async function composePhotoSheet(
       return await sheetBlob(canvas)
     }
 
+    const marginsPx = resolveSafeMarginsPx(options.margins)
     const cutX = PRINT_WIDTH / 2
-    const topMarkLength = Math.round((7 / 25.4) * 300)
-    const bottomMarkLength = Math.round((6.6 / 25.4) * 300)
+    const topMarkLength = Math.max(marginsPx.top, Math.round((7 / 25.4) * 300))
+    const bottomMarkLength = Math.max(marginsPx.bottom, Math.round((6.6 / 25.4) * 300))
 
-    const availableWidth = PRINT_WIDTH - SAFE_MARGIN_PX * 2
-    const availableHeight = PRINT_HEIGHT - SAFE_MARGIN_PX * 2
+    const availableHeight = PRINT_HEIGHT - marginsPx.top - marginsPx.bottom
+    const maxHalfWidth = Math.min(cutX - marginsPx.left, cutX - marginsPx.right)
     const stripWidth = Math.min(
-      availableWidth / 2,
+      maxHalfWidth,
       availableHeight * (TEMPLATE_WIDTH / TEMPLATE_HEIGHT),
     )
     const stripHeight = stripWidth * (TEMPLATE_HEIGHT / TEMPLATE_WIDTH)
-    const top = (PRINT_HEIGHT - stripHeight) / 2
-    context.drawImage(image, SAFE_MARGIN_PX, top, stripWidth, stripHeight)
-    context.drawImage(image, PRINT_WIDTH / 2, top, stripWidth, stripHeight)
+    const top = marginsPx.top + (availableHeight - stripHeight) / 2
+    context.drawImage(image, marginsPx.left, top, stripWidth, stripHeight)
+    context.drawImage(image, cutX, top, stripWidth, stripHeight)
 
     // Garis potong berada tepat di tengah lembar 4R, di antara kedua strip.
     context.save()
