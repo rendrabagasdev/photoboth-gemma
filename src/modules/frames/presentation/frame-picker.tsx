@@ -5,13 +5,14 @@ import { FramePreview } from './frame-preview'
 import { PhotoTemplateEditor } from '../../camera/presentation/photo-template-editor'
 import type { PhotoTransform } from '../../camera/domain/template-layout'
 import type { LivePhotoClip } from '../../sessions/domain/booth-session'
+import type { PhotoFilter } from '../../camera/domain/photo-filter'
 
 type FramePickerProps = {
   mode: 'select' | 'edit'
   frames: PhotoFrame[]
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>
-  cameraFilter?: 'normal' | 'warm' | 'mono'
+  cameraFilter?: PhotoFilter
   transforms: PhotoTransform[]
   photoAssignments?: number[]
   selectedId: string | null

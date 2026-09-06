@@ -2,6 +2,8 @@ import { motion } from 'framer-motion'
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PhotoFrame } from '../../frames/domain/photo-frame'
 import type { LivePhotoClip } from '../../sessions/domain/booth-session'
+import type { PhotoFilter } from '../domain/photo-filter'
+import { getFilterCssString } from '../domain/photo-filter'
 import { useObjectUrl } from '../../../shared/presentation/use-object-url'
 import {
   TEMPLATE_HEIGHT,
@@ -15,7 +17,7 @@ import { TemplateDecoration } from './template-decoration'
 type PhotoTemplateEditorProps = {
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>
-  cameraFilter?: 'normal' | 'warm' | 'mono'
+  cameraFilter?: PhotoFilter
   frame: PhotoFrame
   transforms: PhotoTransform[]
   photoAssignments?: number[]
@@ -97,11 +99,7 @@ export function PhotoTemplateEditor({
   const effectiveAssignments = photoAssignments && photoAssignments.length === slots.length
     ? photoAssignments
     : Array.from({ length: slots.length }, (_, index) => Math.min(index, Math.max(photos.length - 1, 0)))
-  const filterStyle = cameraFilter === 'warm'
-    ? 'sepia(0.2) saturate(1.22) contrast(1.04)'
-    : cameraFilter === 'mono'
-      ? 'grayscale(1) contrast(1.08)'
-      : 'none'
+  const filterStyle = getFilterCssString(cameraFilter)
 
   useEffect(() => {
     if (!draggedPhoto) return

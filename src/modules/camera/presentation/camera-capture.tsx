@@ -2,6 +2,9 @@ import { motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import Webcam from 'react-webcam'
 import { captureLivePhoto, type LivePhotoCapture } from '../application/capture-live-photo'
+import { type PhotoFilter, getFilterCssString } from '../domain/photo-filter'
+
+export type CameraFilter = PhotoFilter
 
 type CameraCaptureProps = {
   slots: number[]
@@ -17,7 +20,7 @@ type CameraCaptureProps = {
 
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
 type TimerSeconds = 3
-export type CameraFilter = 'normal' | 'warm' | 'mono'
+
 type LensMode = 'wide' | 'normal'
 type CameraAspect = '5:4'
 
@@ -84,11 +87,7 @@ function describeCameraError(error: string | DOMException): CameraErrorInfo {
 }
 
 export function getCameraFilterStyle(cameraFilter: CameraFilter) {
-  return cameraFilter === 'warm'
-    ? 'sepia(0.2) saturate(1.22) contrast(1.04)'
-    : cameraFilter === 'mono'
-      ? 'grayscale(1) contrast(1.1)'
-      : 'none'
+  return getFilterCssString(cameraFilter)
 }
 
 export function CameraCapture({
@@ -157,12 +156,6 @@ export function CameraCapture({
     const context = canvas.getContext('2d')
     if (!context) return null
 
-    const filters = cameraFilter === 'warm'
-      ? ['sepia(0.2)', 'saturate(1.22)', 'contrast(1.04)']
-      : cameraFilter === 'mono'
-        ? ['grayscale(1)', 'contrast(1.08)']
-        : []
-    context.filter = filters.join(' ')
     context.translate(outputWidth, 0)
     context.scale(-1, 1)
     context.drawImage(

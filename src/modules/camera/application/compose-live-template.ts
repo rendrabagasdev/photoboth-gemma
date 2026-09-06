@@ -14,6 +14,12 @@ import { drawFrameDecorations } from './draw-frame-decoration'
 import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
 import { fixMp4Duration, normalizeLiveMimeType, withLiveMimeType } from '../domain/live-photo-media'
 
+import {
+  type PhotoFilter,
+  getFilterCssString,
+  supportsCanvasFilter,
+} from '../domain/photo-filter'
+
 const OUTPUT_SCALE = 0.5
 const LIVE_DURATION_MS = 4_000
 
@@ -55,6 +61,7 @@ export async function composeLiveTemplate(
   livePhotos: Array<LivePhotoClip | undefined>,
   frame: PhotoFrame,
   transforms: PhotoTransform[] = defaultPhotoTransforms,
+  filter: PhotoFilter = 'normal',
 ): Promise<Blob> {
   const layout = resolveTemplateLayout(frame.layoutId)
   const slots = resolveFrameSlots(frame)
@@ -128,6 +135,9 @@ export async function composeLiveTemplate(
         slot.borderRadius,
       )
       context.clip()
+      if (supportsCanvasFilter()) {
+        context.filter = getFilterCssString(filter)
+      }
       if (media instanceof HTMLVideoElement) {
         context.scale(-1, 1)
         context.drawImage(media, -localX - width / 2, localY - height / 2, width, height)

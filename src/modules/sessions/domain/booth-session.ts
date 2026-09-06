@@ -1,4 +1,5 @@
 import { createUuid } from '../../../shared/crypto/random-uuid'
+import type { PhotoFilter } from '../../camera/domain/photo-filter'
 
 export type BoothSessionStatus =
   | 'selecting-frame'
@@ -21,6 +22,7 @@ export type BoothSession = {
   frameId: string | null
   photos: string[]
   livePhotos: Array<LivePhotoClip | undefined>
+  filter?: PhotoFilter
   finalImage?: Blob
   finalLive?: Blob
   printStatus: 'not-requested' | 'queued' | 'printed' | 'failed'
@@ -35,6 +37,7 @@ export function createBoothSession(): BoothSession {
     frameId: null,
     photos: [],
     livePhotos: [],
+    filter: 'normal',
     printStatus: 'not-requested',
     createdAt: new Date().toISOString(),
     completedAt: null,

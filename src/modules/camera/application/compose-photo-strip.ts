@@ -12,12 +12,31 @@ import {
 import { drawFrameDecorations } from './draw-frame-decoration'
 import { roundedRectPath } from '../../../shared/canvas/rounded-rect'
 
-export type PhotoFilter = 'normal' | 'warm' | 'mono'
+import {
+  type PhotoFilter,
+  getFilterCssString,
+  applyFilterToImageData,
+  supportsCanvasFilter,
+} from '../domain/photo-filter'
 
-function filterValue(filter: PhotoFilter): string {
-  if (filter === 'warm') return 'sepia(0.2) saturate(1.22) contrast(1.04)'
-  if (filter === 'mono') return 'grayscale(1) contrast(1.08)'
-  return 'none'
+export type { PhotoFilter }
+
+function getFilteredCanvas(image: HTMLImageElement, filter: PhotoFilter): HTMLCanvasElement | HTMLImageElement {
+  if (filter === 'normal' || supportsCanvasFilter()) return image
+  const canvas = document.createElement('canvas')
+  canvas.width = image.width
+  canvas.height = image.height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return image
+  ctx.drawImage(image, 0, 0, image.width, image.height)
+  try {
+    const imgData = ctx.getImageData(0, 0, image.width, image.height)
+    applyFilterToImageData(imgData, filter)
+    ctx.putImageData(imgData, 0, 0)
+    return canvas
+  } catch {
+    return image
+  }
 }
 
 function loadImage(source: string): Promise<HTMLImageElement> {
@@ -53,6 +72,8 @@ function drawPositionedPhoto(
   const offsetX = transform.offsetX * slot.width
   const offsetY = transform.offsetY * slot.height
 
+  const sourceDrawable = getFilteredCanvas(image, filter)
+
   context.save()
   context.translate(slot.x + slot.width / 2, slot.y + slot.height / 2)
   context.rotate(((slot.rotation ?? 0) * Math.PI) / 180)
@@ -65,8 +86,10 @@ function drawPositionedPhoto(
     slot.borderRadius,
   )
   context.clip()
-  context.filter = filterValue(filter)
-  context.drawImage(image, offsetX - width / 2, offsetY - height / 2, width, height)
+  if (supportsCanvasFilter()) {
+    context.filter = getFilterCssString(filter)
+  }
+  context.drawImage(sourceDrawable, offsetX - width / 2, offsetY - height / 2, width, height)
   context.restore()
 }
 
