@@ -86,7 +86,7 @@ function describeCameraError(error: string | DOMException): CameraErrorInfo {
   }
 }
 
-export function getCameraFilterStyle(cameraFilter: CameraFilter) {
+function getCameraFilterStyle(cameraFilter: CameraFilter) {
   return getFilterCssString(cameraFilter)
 }
 

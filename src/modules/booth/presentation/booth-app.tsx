@@ -266,7 +266,9 @@ function ResultPage({
   }, [prepareShareSheet])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (autoPrint) void print()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPrint])
 
   const createQr = useCallback(async () => {
@@ -559,6 +561,7 @@ export function BoothApp({ container }: BoothAppProps) {
         finalLivePhotos,
         selectedFrame,
         finalTransforms,
+        cameraFilter as PhotoFilter,
       ).catch(() => undefined)
       const shareSheetPromise = composePhotoSheet(filteredImage, { variant: 'download' })
       const finalLive = await finalLivePromise
@@ -592,6 +595,7 @@ export function BoothApp({ container }: BoothAppProps) {
       const completed: BoothSession = {
         ...session,
         frameId: selectedFrame.id,
+        filter: cameraFilter,
         status: 'completed',
         finalImage: filteredImage,
         finalLive,
@@ -616,6 +620,7 @@ export function BoothApp({ container }: BoothAppProps) {
     setProcessingPrintStatus('idle')
     setProcessingPrintError('')
     setCameraSlots([])
+    setCameraFilter('normal')
     setPhotoTransforms(defaultPhotoTransforms.map((transform) => ({ ...transform })))
     setFatalError('')
     setScreen('idle')
@@ -723,7 +728,10 @@ export function BoothApp({ container }: BoothAppProps) {
         totalSlots={requiredPhotoCount}
         photos={session?.photos ?? []}
         cameraFilter={cameraFilter}
-        onCameraFilterChange={setCameraFilter}
+        onCameraFilterChange={(filter) => {
+          setCameraFilter(filter)
+          persistSession((current) => ({ ...current, filter }))
+        }}
         startInReview={cameraSlots.length > 1 && session?.photos.length === requiredPhotoCount}
         onCapture={capturePhoto}
         onComplete={finishCapture}

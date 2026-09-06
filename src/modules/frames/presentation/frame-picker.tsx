@@ -38,7 +38,6 @@ export function FramePicker({
   onTransformChange,
   onRetake,
   onContinue,
-  onBack: _onBack,
 }: FramePickerProps) {
   const selectedFrame = frames.find((frame) => frame.id === selectedId) ?? frames[0]
   const frameRefs = useRef<Record<string, HTMLButtonElement | null>>({})
