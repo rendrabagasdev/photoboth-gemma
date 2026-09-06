@@ -1,9 +1,6 @@
 import { PRINT_HEIGHT, PRINT_WIDTH, TEMPLATE_HEIGHT, TEMPLATE_WIDTH } from '../domain/template-layout'
 
-const PRINT_MARGIN_TOP_PX = Math.round((2 / 25.4) * 300)
-const PRINT_MARGIN_RIGHT_PX = Math.round((2 / 25.4) * 300)
-const PRINT_MARGIN_BOTTOM_PX = Math.round((2 / 25.4) * 300)
-const PRINT_MARGIN_LEFT_PX = Math.round((2 / 25.4) * 300)
+const SAFE_MARGIN_PX = Math.round((2 / 25.4) * 300)
 
 function loadBlobImage(blob: Blob): Promise<{ image: HTMLImageElement; url: string }> {
   return new Promise((resolve, reject) => {
@@ -63,20 +60,19 @@ export async function composePhotoSheet(
     }
 
     const cutX = PRINT_WIDTH / 2
-    const markLength = Math.round((6 / 25.4) * 300)
+    const topMarkLength = Math.round((6 / 25.4) * 300)
+    const bottomMarkLength = Math.round((7 / 25.4) * 300)
 
-    const stripAreaWidth = PRINT_WIDTH / 2
-    const availableWidth = stripAreaWidth - PRINT_MARGIN_LEFT_PX - PRINT_MARGIN_RIGHT_PX
-    const availableHeight = PRINT_HEIGHT - PRINT_MARGIN_TOP_PX - PRINT_MARGIN_BOTTOM_PX
+    const availableWidth = PRINT_WIDTH - SAFE_MARGIN_PX * 2
+    const availableHeight = PRINT_HEIGHT - SAFE_MARGIN_PX * 2
     const stripWidth = Math.min(
-      availableWidth,
+      availableWidth / 2,
       availableHeight * (TEMPLATE_WIDTH / TEMPLATE_HEIGHT),
     )
     const stripHeight = stripWidth * (TEMPLATE_HEIGHT / TEMPLATE_WIDTH)
-    const verticalRemainingSpace = availableHeight - stripHeight
-    const top = PRINT_MARGIN_TOP_PX + Math.max(0, verticalRemainingSpace / 2)
-    context.drawImage(image, PRINT_MARGIN_LEFT_PX, top, stripWidth, stripHeight)
-    context.drawImage(image, stripAreaWidth + PRINT_MARGIN_LEFT_PX, top, stripWidth, stripHeight)
+    const top = (PRINT_HEIGHT - stripHeight) / 2
+    context.drawImage(image, SAFE_MARGIN_PX, top, stripWidth, stripHeight)
+    context.drawImage(image, PRINT_WIDTH / 2, top, stripWidth, stripHeight)
 
     // Garis potong berada tepat di tengah lembar 4R, di antara kedua strip.
     context.save()
@@ -85,9 +81,9 @@ export async function composePhotoSheet(
     context.strokeStyle = 'rgba(35, 35, 35, 0.9)'
 
     context.moveTo(cutX, 0)
-    context.lineTo(cutX, markLength)
+    context.lineTo(cutX, topMarkLength)
 
-    context.moveTo(cutX, PRINT_HEIGHT - markLength)
+    context.moveTo(cutX, PRINT_HEIGHT - bottomMarkLength)
     context.lineTo(cutX, PRINT_HEIGHT)
 
     context.stroke()
