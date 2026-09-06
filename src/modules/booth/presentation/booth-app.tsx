@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CameraCapture, type CameraFilter, getCameraFilterStyle } from '../../camera/presentation/camera-capture'
+import { CameraCapture, type CameraFilter } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip, type PhotoFilter } from '../../camera/application/compose-photo-strip'
 import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
@@ -91,7 +91,7 @@ const processingPrintLabel: Record<PrintStatus, string> = {
   failed: 'PRINT FAILED\nCHECK PRINTER',
 }
 
-function ProcessingPage({ image, printStatus, printError, cameraFilter }: { image?: Blob; printStatus: PrintStatus; printError: string; cameraFilter: CameraFilter }) {
+function ProcessingPage({ image, printStatus, printError }: { image?: Blob; printStatus: PrintStatus; printError: string; cameraFilter: CameraFilter }) {
   const imageUrl = useObjectUrl(image)
   const statusLines = (printError || processingPrintLabel[printStatus]).split('\n')
 
