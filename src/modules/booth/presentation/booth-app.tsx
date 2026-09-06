@@ -128,7 +128,6 @@ function ProcessingPage({ image, printStatus, printError, cameraFilter }: { imag
           src={imageUrl}
           alt="Hasil foto sedang diproses"
           className="absolute top-55 w-56"
-          style={{ filter: getCameraFilterStyle(cameraFilter) }}
           initial={{ y: '-130%' }}
           animate={{ y: '-5%' }}
           transition={{ duration: 6, ease: 'easeInOut' }}
