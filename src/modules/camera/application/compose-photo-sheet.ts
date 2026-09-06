@@ -2,7 +2,7 @@ import { PRINT_HEIGHT, PRINT_WIDTH, TEMPLATE_HEIGHT, TEMPLATE_WIDTH } from '../d
 
 const PRINT_MARGIN_TOP_PX = Math.round((2 / 25.4) * 300)
 const PRINT_MARGIN_RIGHT_PX = Math.round((2 / 25.4) * 300)
-const PRINT_MARGIN_BOTTOM_PX = 25
+const PRINT_MARGIN_BOTTOM_PX = Math.round((2 / 25.5) * 300)
 const PRINT_MARGIN_LEFT_PX = Math.round((2 / 25.4) * 300)
 
 function loadBlobImage(blob: Blob): Promise<{ image: HTMLImageElement; url: string }> {
