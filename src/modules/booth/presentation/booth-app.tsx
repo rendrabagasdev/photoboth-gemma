@@ -345,14 +345,6 @@ function ResultPage({
             alt="QR unduh foto dan Live Photo"
             className="w-80 "
           />
-          <button
-            type="button"
-            onClick={() => void downloadPdf()}
-            disabled={downloadingPdf}
-            className="rounded-full bg-black px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-white disabled:opacity-50"
-          >
-            {downloadingPdf ? 'MENYIAPKAN PDF' : 'DOWNLOAD PDF'}
-          </button>
         </div>
       )}
     </main>
