@@ -60,7 +60,7 @@ export async function composePhotoSheet(
     }
 
     const cutX = PRINT_WIDTH / 2
-    const topMarkLength = Math.round((5 / 25.4) * 300)
+    const topMarkLength = Math.round((7 / 25.4) * 300)
     const bottomMarkLength = Math.round((6.6 / 25.4) * 300)
 
     const availableWidth = PRINT_WIDTH - SAFE_MARGIN_PX * 2
