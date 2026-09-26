@@ -129,8 +129,8 @@ export async function composePhotoSheet(
     // Garis potong berada tepat di tengah lembar 4R, di antara kedua strip.
     context.save()
     context.beginPath()
-    context.lineWidth = 1
-    context.strokeStyle = 'rgba(35, 35, 35, 0.9)'
+    context.lineWidth = 0.5
+    context.strokeStyle = 'rgba(35, 35, 35, 0.5)'
 
     context.moveTo(cutX, 0)
     context.lineTo(cutX, topMarkLength)

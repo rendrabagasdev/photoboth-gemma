@@ -19,7 +19,7 @@ type CameraCaptureProps = {
 }
 
 type CameraState = 'requesting' | 'ready' | 'countdown' | 'live' | 'flash' | 'error'
-type TimerSeconds = 3
+type TimerSeconds = 5
 
 type LensMode = 'wide' | 'normal'
 type CameraAspect = '5:4'
@@ -105,9 +105,9 @@ export function CameraCapture({
   const streamRef = useRef<MediaStream | undefined>(undefined)
   const activeRef = useRef(true)
   const [cameraState, setCameraState] = useState<CameraState>('requesting')
-  const [countdown, setCountdown] = useState(3)
+  const [countdown, setCountdown] = useState(5)
   const [activeSlot, setActiveSlot] = useState(slots[0] ?? 0)
-  const [timerSeconds] = useState<TimerSeconds>(3)
+  const [timerSeconds] = useState<TimerSeconds>(5)
   const [lensMode] = useState<LensMode>('wide')
   const [cameraAspect] = useState<CameraAspect>('5:4')
   const [slotCursor, setSlotCursor] = useState(0)
@@ -188,7 +188,7 @@ export function CameraCapture({
 
       let remaining = timerSeconds
       setCountdown(remaining)
-      while (remaining > 2) {
+      while (remaining > 1) {
         await wait(1_000)
         if (!activeRef.current) return
         remaining -= 1

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture, type CameraFilter } from '../../camera/presentation/camera-capture'
 import { composePhotoStrip, type PhotoFilter } from '../../camera/application/compose-photo-strip'
 import { composePhotoSheet } from '../../camera/application/compose-photo-sheet'
-import { composePrintPdf } from '../../camera/application/compose-print-pdf'
 import { composeLiveTemplate } from '../../camera/application/compose-live-template'
 import {
   defaultPhotoTransforms,
@@ -161,13 +160,13 @@ function ResultPage({
   const [shareSheet, setShareSheet] = useState<Blob>()
   const [qrImage, setQrImage] = useState(preparedQrImage ?? '')
   const [sharedResult, setSharedResult] = useState<SharedResult | undefined>(preparedSharedResult)
-  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const shareInFlightRef = useRef(false)
   const printInFlightRef = useRef(false)
   const printRequestIdRef = useRef<string | undefined>(undefined)
   const photoSheetInFlightRef = useRef<Promise<Blob> | undefined>(undefined)
   const shareSheetInFlightRef = useRef<Promise<Blob> | undefined>(undefined)
-  const [printStatus, setPrintStatus] = useState<PrintStatus>('idle')
+  const [, setPrintStatus] = useState<PrintStatus>('idle')
+  const [isPrintingFeedback, setIsPrintingFeedback] = useState(false)
 
   // Lembar cetak memakai margin aman dan garis potong; lembar unduh tidak,
   // karena hasil dari QR tidak pernah dipotong secara fisik.
@@ -184,13 +183,13 @@ function ResultPage({
   }, [shareSheet, result])
 
   const print = async () => {
-    if (printInFlightRef.current || printStatus === 'queued') return
+    if (printInFlightRef.current) return
     printInFlightRef.current = true
     setPrintStatus('preparing')
     try {
       const sheet = await preparePhotoSheet()
       setPrintStatus('sending')
-      const requestId = printRequestIdRef.current ?? createUuid()
+      const requestId = createUuid()
       printRequestIdRef.current = requestId
       const response = await fetch('/api/print', {
         method: 'POST',
@@ -217,23 +216,6 @@ function ResultPage({
       setPrintStatus('failed')
     } finally {
       printInFlightRef.current = false
-    }
-  }
-
-  const downloadPdf = async () => {
-    if (downloadingPdf) return
-    setDownloadingPdf(true)
-    try {
-      const sheet = await preparePhotoSheet()
-      const pdf = await composePrintPdf(sheet)
-      const url = URL.createObjectURL(pdf)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `tobfest-print-${sessionId.slice(0, 8)}.pdf`
-      link.click()
-      URL.revokeObjectURL(url)
-    } finally {
-      setDownloadingPdf(false)
     }
   }
 
@@ -338,7 +320,21 @@ function ResultPage({
       </button>
       {qrImage && (
         <div className="w-100 h-180 flex flex-col justify-end items-center bg-[var(--theme-paper)] text-black absolute top-30 gap-8 qr_container pb-10" >
-          <img className="w-30" src="picto_text_hitam.svg" alt="Picto Text" />
+          <motion.button
+            type="button"
+            onClick={() => {
+              setIsPrintingFeedback(true)
+              window.setTimeout(() => setIsPrintingFeedback(false), 400)
+              void print()
+            }}
+            whileTap={{ scale: 0.88, opacity: 0.6 }}
+            animate={isPrintingFeedback ? { scale: [1, 0.88, 1], opacity: [1, 0.6, 1] } : {}}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            aria-label="Cetak lembar foto"
+            className="cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+          >
+            <img className="w-30" src="picto_text_hitam.svg" alt="Picto Text" />
+          </motion.button>
           <span className="text-4xl text-center"> SCAN FOR <br /> DOWNLOAD </span>
           <img
             src={qrImage}
